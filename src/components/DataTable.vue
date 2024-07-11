@@ -2,7 +2,7 @@
   <div>
     <div class="data-table-container">
       <div class="button-group">
-        <el-button @click="openAddDialog" :disabled="isGuest">Upload</el-button>
+        <el-button type="primary" @click="openAddDialog" :disabled="isGuest">Upload</el-button>
         <el-button @click="exportData" >Export</el-button>
         <el-button @click="exploreSelected" >Explore</el-button>
       </div>
@@ -26,8 +26,9 @@
         <el-table-column prop="shooting_date" label="Tomography Date" sortable></el-table-column> -->
         <el-table-column label="操作">
           <template v-slot="scope">
-            <el-button size="small" @click="viewData(scope.row)">View</el-button>
-            <el-button size="small" type="danger" @click="confirmDelete(scope.row)" :disabled="isGuest">Delete</el-button>
+            <el-button size="small" type="primary" @click="viewData(scope.row)">View</el-button>
+            <el-button size="small" @click="downloadImage(scope.row)">Download</el-button>
+            
           </template>
         </el-table-column>
       </el-table>
@@ -41,12 +42,12 @@
     </div>
 
     <!-- Dialog for adding data -->
-    <el-dialog title="Data Upload" v-model="addDialogVisible" @open="setDefaultValues" width="74%">
+    <el-dialog title="Upload Data" v-model="addDialogVisible" @open="setDefaultValues" width="74%">
       <el-form ref="addForm" :model="form" label-width="240px" class="custom-dialog-content">
         <!-- 单独的 Cell ID 行 -->
         <el-row justify="center" class="cell-id-row">
           <el-col :span="12" class="cell-id-col">
-            <el-form-item label="Cell ID" label-width="450px" class="custom-form-item cell-id-item">
+            <el-form-item label="Cell ID" label-width="50%" class="custom-form-item cell-id-item">
               <el-input 
                 v-model="form.cell_id" 
                 :style="{ color: isDefaultValue.cell_id ? 'gray' : 'black', fontWeight: 'bold' }"
@@ -55,7 +56,6 @@
             </el-form-item>
           </el-col>
         </el-row>
-
         <div v-for="(section, sectionKey) in formSections" :key="sectionKey" class="form-section">
           <el-divider></el-divider>
           <h3>{{ section.title }}</h3>
@@ -76,37 +76,39 @@
         </div>
       </el-form>
       <div slot="footer" class="dialog-footer">
-        <el-button @click="addDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="submitForm">上传</el-button>
+        <el-button @click="addDialogVisible = false">取消</el-button>
       </div>
     </el-dialog>
 
     <!-- Dialog for viewing and editing data -->
-    <el-dialog title="View Data" v-model="viewDialogVisible">
-      <el-form ref="viewFormRef" :model="viewForm" label-width="240px">
+    <el-dialog title="View Data" v-model="viewDialogVisible" width="74%">
+      <el-form ref="viewFormRef" :model="viewForm" label-width="240px" class="custom-dialog-content">
         <!-- 显示图像 -->
         <div v-if="viewForm.image_file" class="image-container">
-          <img :src="getImageUrl(viewForm.image_file)" alt="Image" class="image-preview" style="width: 25%;">
+          <img 
+            :src="getImageUrl(viewForm.image_file)" 
+            alt="Image" class="image-preview" 
+            style="width: 12%;" 
+            @dblclick="showFullImage(viewForm.image_file)">
           <div class="image-label">MIP</div>
         </div>
-        <!-- 新增Cell ID显示 -->
+        <!-- 单独的 Cell ID 行 -->
         <el-row justify="center" class="cell-id-row">
-          <el-col :span="24" class="cell-id-col">
-            <el-form-item label="Cell ID" label-width="450px" class="custom-form-item cell-id-item">
+          <el-col justify="center":span="4" class="cell-id-col">
+            <el-form-item label="Cell ID" label-width="50%" class="custom-form-item cell-id-item">
               <el-input 
                 v-model="viewForm.cell_id" 
-                readonly
-                :style="{ fontWeight: 'bold' }"
+                :readonly="!isEdit"
               ></el-input>
             </el-form-item>
           </el-col>
         </el-row>
-
         <div v-for="(section, sectionKey) in formSections" :key="sectionKey" class="form-section">
           <el-divider></el-divider>
           <h3>{{ section.title }}</h3>
-          <el-row :gutter="80">
-            <el-col :span="12" v-for="(item, index) in section.items" :key="index">
+          <el-row :gutter="20">
+            <el-col :span="6" v-for="(item, index) in section.items" :key="index">
               <el-form-item :label="item.label":prop="item.prop">
                 <el-input v-model="viewForm[item.prop]" :readonly="!isEdit"></el-input>
               </el-form-item>
@@ -115,11 +117,17 @@
         </div>
       </el-form>
       <div slot="footer" class="dialog-footer">
+        <el-button v-if="isEdit" type="danger" @click="confirmDelete(scope.row)" :disabled="isGuest">删除</el-button>
         <el-button @click="viewDialogVisible = false">取消</el-button>
         <el-button v-if="!isEdit" type="primary" @click="startEditing" :disabled="isGuest">编辑</el-button>
         <el-button v-if="isEdit" type="primary" @click="submitEdit">保存</el-button>
       </div>
     </el-dialog>
+
+    <!-- Full-size image dialog -->
+      <el-dialog title="Full Size Image" v-model="fullImageDialogVisible" width="22%">
+        <img :src="fullImageUrl" alt="Full Size Image" style="width: 100%;">
+      </el-dialog>
 
     <!-- Dialog for delete confirmation -->
     <el-dialog title="确认删除" v-model="deleteDialogVisible">
@@ -161,9 +169,10 @@ export default {
       deleteDialogVisible: false,
       isEdit: false, // 确保 isEdit 被初始化
       deleteRow: null,
-      // currentRow: null,
       selectedRows: reactive([]), // 全局的选中行数据数组
       selectAllPages: false, 
+      fullImageDialogVisible: false,
+      fullImageUrl: '',
       // loading: false,
       form: this.getEmptyForm(),
       viewForm: this.getEmptyForm(),
@@ -377,6 +386,10 @@ export default {
     getImageUrl(imagePath) {
       return `http://10.192.58.140:8000/image/${imagePath.replace('./', '')}`;
     },
+    showFullImage(imagePath) {
+      this.fullImageUrl = this.getImageUrl(imagePath);
+      this.fullImageDialogVisible = true;
+    },
     startEditing() {
       this.isEdit = true;
     },
@@ -396,6 +409,7 @@ export default {
         this.$message.error('数据更新失败');
       });
     },
+
     confirmDelete(row) {
       this.deleteRow = row;
       this.deleteDialogVisible = true;
@@ -536,8 +550,8 @@ export default {
 .cell-id-row {
   display: flex;
   justify-content: center;
-  margin-top: 20px;
-  margin-bottom: 20px; /* 添加间距使其与下面的内容分开 */
+  margin-top: 40px;
+  margin-bottom: 15px; /* 添加间距使其与下面的内容分开 */
 }
 
 /* .cell-id-col {
@@ -593,20 +607,20 @@ export default {
 }
 
 .image-container {
-  text-align: center;
-  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
 }
-
 .image-preview {
-  max-width: 100%;
+  cursor: pointer;
+  transition: transform 0.3s;
 }
-
+.image-preview:hover {
+  transform: scale(1.1);
+}
 .image-label {
-  margin-top: 10px;
-  font-size: 16px;
-  color: #606266;
+  margin-top: 5px;
+  font-weight: bold;
 }
 </style>
-
-
-

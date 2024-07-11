@@ -167,60 +167,78 @@ export default {
         params.end_date = new Date(this.dateRange[1]).toISOString().split('T')[0];
       }
 
+      // 检查缓存
+      const cacheKey = `productionTrend_${params.start_date}_${params.end_date}`;
+      const cachedData = localStorage.getItem(cacheKey);
+
+      if (cachedData) {
+        const response = JSON.parse(cachedData);
+        this.updateChart(response);
+        return;
+      }
+
+      this.loading = true;  // 开始加载
       axios.get('/productiontrend/', {
         params,
         timeout: 5000,
       })
       .then(response => {
-        const dates = response.data.dates;
-        const totalValues = response.data.totalValues;
-        const dailyValues = response.data.dailyValues;
-        this.minDate = response.data.minDate;
-        this.maxDate = response.data.maxDate;
-        
-        // 更新日期选择器选项
-        this.datePickerOptions = {
-          disabledDate: (time) => {
-            const minDate = new Date(this.minDate);
-            const maxDate = new Date(this.maxDate);
-            return time.getTime() < minDate.getTime() || time.getTime() > maxDate.getTime();
-          }
-        };
-
-        this.chart.setOption({
-          xAxis: {
-            data: dates,
-          },
-          yAxis: [
-            {
-              type: 'value',
-              name: '总生产量',
-              position: 'left',
-              minInterval: 1,
-            },
-            {
-              type: 'value',
-              name: '每日生产量',
-              position: 'right',
-              minInterval: 1,
-            }
-          ],
-          series: [
-            {
-              name: '总生产量',
-              data: totalValues,
-              type: 'line',
-              yAxisIndex: 0,
-            },
-            {
-              name: '每日生产量',
-              data: dailyValues,
-              type: 'bar',
-              yAxisIndex: 1,
-            }
-          ],
-        });
+        // 更新缓存
+        localStorage.setItem(cacheKey, JSON.stringify(response.data));
+        this.updateChart(response.data);
       })
+      .finally(() => {
+        this.loading = false;  // 加载完成
+      });
+    },
+    updateChart(data) {
+      const dates = data.dates;
+      const totalValues = data.totalValues;
+      const dailyValues = data.dailyValues;
+      this.minDate = data.minDate;
+      this.maxDate = data.maxDate;
+
+      this.datePickerOptions = {
+        disabledDate: (time) => {
+          const minDate = new Date(this.minDate);
+          const maxDate = new Date(this.maxDate);
+          return time.getTime() < minDate.getTime() || time.getTime() > maxDate.getTime();
+        }
+      };
+
+      this.chart.setOption({
+        xAxis: {
+          data: dates,
+        },
+        yAxis: [
+          {
+            type: 'value',
+            name: '总生产量',
+            position: 'left',
+            minInterval: 1,
+          },
+          {
+            type: 'value',
+            name: '每日生产量',
+            position: 'right',
+            minInterval: 1,
+          }
+        ],
+        series: [
+          {
+            name: '总生产量',
+            data: totalValues,
+            type: 'line',
+            yAxisIndex: 0,
+          },
+          {
+            name: '每日生产量',
+            data: dailyValues,
+            type: 'bar',
+            yAxisIndex: 1,
+          }
+        ],
+      });
     },
 
     fetchAdditionalChartData() {
