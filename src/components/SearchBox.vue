@@ -151,7 +151,7 @@ export default {
         brain_region: [],
         lucifer_yellow_immunohistochemistry: ''
       };
-      this.$emit('search', this.searchQuery); // 确保重置后表格数据也被重置
+      // this.$emit('search', this.searchQuery); // 确保重置后表格数据也被重置
     },
     handleSelectionChange(field) {
       if (this.searchQuery[field].includes('none')) {
