@@ -96,7 +96,7 @@
         <!-- 单独的 Cell ID 行 -->
         <el-row justify="center" class="cell-id-row">
           <el-col justify="center":span="4" class="cell-id-col">
-            <el-form-item label="Cell ID" label-width="50%" class="custom-form-item cell-id-item">
+            <el-form-item label="Cell ID" label-width="45%" class="custom-form-item cell-id-item">
               <el-input 
                 v-model="viewForm.cell_id" 
                 :readonly="!isEdit"
@@ -125,7 +125,7 @@
     </el-dialog>
 
     <!-- Full-size image dialog -->
-      <el-dialog title="Full Size Image" v-model="fullImageDialogVisible" width="22%">
+      <el-dialog title="Full Size Image" v-model="fullImageDialogVisible" width="28%">
         <img :src="fullImageUrl" alt="Full Size Image" style="width: 100%;">
       </el-dialog>
 
@@ -384,7 +384,7 @@ export default {
       this.viewDialogVisible = true;
     },
     getImageUrl(imagePath) {
-      return `http://10.192.58.140:8000/image/${imagePath.replace('./', '')}`;
+      return `http://10.192.34.220:8000/image/${imagePath.replace('./', '')}`;
     },
     showFullImage(imagePath) {
       this.fullImageUrl = this.getImageUrl(imagePath);
@@ -550,8 +550,8 @@ export default {
 .cell-id-row {
   display: flex;
   justify-content: center;
-  margin-top: 40px;
-  margin-bottom: 15px; /* 添加间距使其与下面的内容分开 */
+  margin-top: 20px;
+  margin-bottom: 20px; /* 添加间距使其与下面的内容分开 */
 }
 
 /* .cell-id-col {

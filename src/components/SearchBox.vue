@@ -19,18 +19,26 @@
                 </el-row>
               </el-form-item>
             </el-col>
+            <!-- <el-col :span="6">
+              <el-form-item label="Tissue ID">
+                <el-select v-model="searchQuery.tissue_id" multiple placeholder="Choose Tissue ID" @clear="clearSelection('tissue_id')">
+                  <el-option label="None" value=""></el-option>
+                  <el-option v-for="option in tissueIdOptions" :key="option.value" :label="option.label" :value="option.value"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col> -->
             <el-col :span="6">
               <el-form-item label="Tissue ID">
-                <el-select v-model="searchQuery.tissue_id" placeholder="Chose Tissue ID">
-                  <el-option label="None" value=""></el-option>
+                <el-select v-model="searchQuery.tissue_id" multiple placeholder="Chose Tissue ID" @change="handleSelectionChange('tissue_id')">
+                  <el-option v-if="searchQuery.tissue_id.length > 0" label="None" value="none"></el-option>
                   <el-option v-for="option in tissueIdOptions" :key="option.value" :label="option.label" :value="option.value"></el-option>
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :span="6">
               <el-form-item label="Slice ID">
-                <el-select v-model="searchQuery.slice_id" placeholder="Chose Slice ID">
-                  <el-option label="None" value=""></el-option>
+                <el-select v-model="searchQuery.slice_id" multiple placeholder="Chose Slice ID" @change="handleSelectionChange('slice_id')">
+                  <el-option v-if="searchQuery.slice_id.length > 0" label="None" value="none"></el-option>
                   <el-option v-for="option in sliceIdOptions" :key="option.value" :label="option.label" :value="option.value"></el-option>
                 </el-select>
               </el-form-item>
@@ -55,12 +63,13 @@
             </el-col>
             <el-col :span="6">
               <el-form-item label="Brain Region">
-                <el-select v-model="searchQuery.brain_region" placeholder="Chose Brain Region">
-                  <el-option label="None" value=""></el-option>
+                <el-select v-model="searchQuery.brain_region" multiple placeholder="Chose Brain Region" @change="handleSelectionChange('brain_region')">
+                  <el-option v-if="searchQuery.brain_region.length > 0" label="None" value="none"></el-option>
                   <el-option v-for="option in brainRegionOptions" :key="option.value" :label="option.label" :value="option.value"></el-option>
                 </el-select>
               </el-form-item>
-            </el-col>
+            </el-col>  
+
             <el-col :span="6">
               <el-form-item label="Lucifer Yellow IHC">
                 <el-select v-model="searchQuery.lucifer_yellow_immunohistochemistry" placeholder="Chose Lucifer Yellow IHC">
@@ -92,16 +101,17 @@ export default {
       searchQuery: {
         cell_id_start: '',
         cell_id_end: '',
-        tissue_id: '',
-        slice_id: '',
+        tissue_id: [],
+        slice_id: [],
         inject_method: '',
         fresh_perfusion: '',
-        brain_region: '',
+        brain_region: [],
         lucifer_yellow_immunohistochemistry: ''
       },
       tissueIdOptions: [],
       sliceIdOptions: [],
-      brainRegionOptions: []
+      brainRegionOptions: [],
+
     };
   },
   mounted() {
@@ -120,26 +130,37 @@ export default {
         });
     },
     search() {
-      this.$emit('search', this.searchQuery);
+      // Ensure array parameters are serialized correctly
+      let queryParams = {
+        ...this.searchQuery,
+        tissue_id: this.searchQuery.tissue_id.join(','),
+        slice_id: this.searchQuery.slice_id.join(','),
+        brain_region: this.searchQuery.brain_region.join(',')
+        
+      };
+      this.$emit('search', queryParams);
     },
     reset() {
       this.$refs.searchForm.resetFields();
       this.searchQuery = {
         cell_id_start: '',
         cell_id_end: '',
-        tissue_id: '',
-        slice_id: '',
-        // slicing_method: '',
+        tissue_id: [],
+        slice_id: [],
         fresh_perfusion: '',
-        brain_region: '',
+        brain_region: [],
         lucifer_yellow_immunohistochemistry: ''
       };
       this.$emit('search', this.searchQuery); // 确保重置后表格数据也被重置
+    },
+    handleSelectionChange(field) {
+      if (this.searchQuery[field].includes('none')) {
+        this.searchQuery[field] = [];
+      }
     }
   }
 };
 </script>
-
 
 <style scoped>
 .search-box-card {

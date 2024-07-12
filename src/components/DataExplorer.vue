@@ -56,7 +56,7 @@ export default {
       }
     },
     getImageUrl(imagePath) {
-      return `http://10.192.58.140:8000/image/${imagePath.replace('./', '')}`;
+      return `http://10.192.34.220:8000/image/${imagePath.replace('./', '')}`;
     },
     prevItem() {
       if (this.currentIndex > 0) {
