@@ -19,16 +19,18 @@
         <el-table-column prop="brain_region" label="脑区" sortable></el-table-column>
         <el-table-column prop="slice_thickness" label="切片厚度(μm)" sortable></el-table-column>
         <el-table-column prop="cell_depth" label="细胞深度(μm)" sortable></el-table-column>
-        <el-table-column prop="inject_method" label="Manual/Auto Inject (0:Manual;1:Auto)" sortable></el-table-column>
+        <el-table-column prop="inject_method" label="Injection (0:Manual;1:Auto)" sortable></el-table-column>
+        <!-- <el-table-column prop="inject_method" label="Manual/Auto Inject (0:Manual;1:Auto)" sortable></el-table-column> -->
         <!-- <el-table-column prop="lucifer_yellow_immunohistochemistry" label="免疫组化(0:否;1:是)" sortable></el-table-column> -->
         <!-- <el-table-column prop="xy_resolution" label="XY Resolution(*10e-3μm/px)" sortable></el-table-column>
         <el-table-column prop="z_resolution" label="Z Resolution(*10e-3μm/px)" sortable></el-table-column>
         <el-table-column prop="shooting_date" label="Tomography Date" sortable></el-table-column> -->
-        <el-table-column label="操作">
+        <el-table-column label="操作" width="160">
           <template v-slot="scope">
-            <el-button size="small" type="primary" @click="viewData(scope.row)">View</el-button>
-            <el-button size="small" @click="downloadImage(scope.row)">Download</el-button>
-            
+            <div class="action-buttons">
+              <el-button size="small" type="primary" @click="viewData(scope.row)">View</el-button>
+              <el-button size="small" @click="downloadImage(scope.row)">Download</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -95,7 +97,7 @@
         </div>
         <!-- 单独的 Cell ID 行 -->
         <el-row justify="center" class="cell-id-row">
-          <el-col justify="center":span="4" class="cell-id-col">
+          <el-col justify="center":span="7" class="cell-id-col">
             <el-form-item label="Cell ID" label-width="45%" class="custom-form-item cell-id-item">
               <el-input 
                 v-model="viewForm.cell_id" 
@@ -117,17 +119,21 @@
         </div>
       </el-form>
       <div slot="footer" class="dialog-footer">
-        <el-button v-if="isEdit" type="danger" @click="confirmDelete(scope.row)" :disabled="isGuest">删除</el-button>
-        <el-button @click="viewDialogVisible = false">取消</el-button>
-        <el-button v-if="!isEdit" type="primary" @click="startEditing" :disabled="isGuest">编辑</el-button>
-        <el-button v-if="isEdit" type="primary" @click="submitEdit">保存</el-button>
+        <div class="left-buttons">
+          <el-button v-if="isEdit" type="danger" @click="confirmDelete">删除</el-button>
+        </div>
+        <div class="right-buttons">
+          <el-button @click="viewDialogVisible = false">取消</el-button>
+          <el-button v-if="!isEdit" type="primary" @click="startEditing" :disabled="isGuest">编辑</el-button>
+          <el-button v-if="isEdit" type="primary" @click="submitEdit">保存</el-button>
+        </div>
       </div>
     </el-dialog>
 
     <!-- Full-size image dialog -->
-      <el-dialog title="Full Size Image" v-model="fullImageDialogVisible" width="28%">
-        <img :src="fullImageUrl" alt="Full Size Image" style="width: 100%;">
-      </el-dialog>
+    <el-dialog title="Full Size Image" v-model="fullImageDialogVisible" width="28%">
+      <img :src="fullImageUrl" alt="Full Size Image" style="width: 100%;">
+    </el-dialog>
 
     <!-- Dialog for delete confirmation -->
     <el-dialog title="确认删除" v-model="deleteDialogVisible">
@@ -380,7 +386,7 @@ export default {
     },
     viewData(row) {
       this.viewForm = { ...row };
-      this.isEdit = false
+      this.isEdit = false;
       this.viewDialogVisible = true;
     },
     getImageUrl(imagePath) {
@@ -409,13 +415,11 @@ export default {
         this.$message.error('数据更新失败');
       });
     },
-
-    confirmDelete(row) {
-      this.deleteRow = row;
+    confirmDelete() {
       this.deleteDialogVisible = true;
     },
     deleteData() {
-      axios.delete(`/singlecell/${this.deleteRow.cell_id}`, {
+      axios.delete(`/singlecell/${this.viewForm.cell_id}`, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -423,6 +427,7 @@ export default {
       .then(response => {
         this.fetchData();
         this.deleteDialogVisible = false;
+        this.viewDialogVisible = false;  // 关闭查看对话框
         this.$message.success('数据删除成功');
       })
       .catch(error => {
@@ -532,9 +537,27 @@ export default {
   margin-bottom: 20px;
 }
 
-.dialog-footer {
-  text-align: right;
+.action-buttons {
+  display: flex;
 }
+
+.dialog-footer {
+  display: flex;
+  justify-content: space-between;
+}
+
+.left-buttons {
+  flex: 1;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.right-buttons {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+
 
 .el-dialog {
   z-index: 2000 !important;
