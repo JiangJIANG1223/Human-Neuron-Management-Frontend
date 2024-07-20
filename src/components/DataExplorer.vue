@@ -34,7 +34,7 @@ export default {
       return this.selectedData[this.currentIndex] || {};
     },
     filteredAttributes() {
-      const attributesToShow = ['cell_id', 'tissue_id', 'slice_id', 'fresh_perfusion', 'brain_region', 'slice_thickness', 'cell_depth', 'inject_method'];
+      const attributesToShow = ['cell_id', 'sample_number', 'tissue_block_number', 'slice_number', 'fresh_perfusion', 'brain_region', 'slice_thickness', 'cell_depth', 'inject_method'];
       return attributesToShow.reduce((result, key) => {
         if (this.currentItem[key] !== undefined) {
           result[key] = this.currentItem[key];
@@ -56,7 +56,7 @@ export default {
       }
     },
     getImageUrl(imagePath) {
-      return `http://10.192.34.220:8000/image/${imagePath.replace('./', '')}`;
+      return `http://10.192.34.220:8000/image/${imagePath}`;
     },
     prevItem() {
       if (this.currentIndex > 0) {

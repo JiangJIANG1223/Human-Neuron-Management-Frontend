@@ -5,13 +5,14 @@
  * @Date: 2024-05-27
  -->
 
- <template>
+<template>
   <div>
     <router-view />
   </div>
 </template>
 
 <script>
+import HeaderBar from './components/HeaderBar.vue';
 export default {
   name: 'App',
   created() {
@@ -20,8 +21,24 @@ export default {
   methods: {
     checkLoginStatus() {
       const token = localStorage.getItem('access_token');
+      const tokenExpiry = localStorage.getItem('token_expiry');
       const isGuest = localStorage.getItem('is_guest') === 'true';
-      if (token || isGuest) {
+      const now = new Date().getTime();
+
+      if (token && tokenExpiry) {
+        if (now >= tokenExpiry) {
+          // Token 过期，清除存储并跳转到登录页面
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('token_expiry');
+          localStorage.removeItem('is_guest');
+          localStorage.removeItem('productionTrend');
+          this.$router.push('/login');
+        } else {
+          if (this.$route.path === '/login') {
+            this.$router.push('/main');
+          }
+        }
+      } else if (isGuest) {
         if (this.$route.path === '/login') {
           this.$router.push('/main');
         }
@@ -39,7 +56,6 @@ export default {
   }
 };
 </script>
-
 
 <style>
 /* 导入 Element Plus 的 CSS 样式文件 */

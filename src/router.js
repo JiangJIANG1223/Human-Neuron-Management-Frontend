@@ -47,7 +47,6 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('access_token');
   const isGuest = localStorage.getItem('is_guest') === 'true';
-  console.log("reload");
 
   if (to.matched.length === 0) {
     next('/login');
@@ -59,5 +58,3 @@ router.beforeEach((to, from, next) => {
 });
 
 export default router;
-
-

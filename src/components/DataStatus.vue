@@ -107,15 +107,19 @@ export default {
     };
   },
   mounted() {
+    console.log('Component mounted at:', new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }));
     this.fetchStats();
     this.initCharts();
     this.fetchTrendData();
+    // this.refreshTrendCache();
+    // setInterval(this.refreshTrendCache, 3600000); // 3600000 毫秒 = 1 小时
+    this.scheduleMidnightRefresh();
     this.fetchAdditionalChartData();
     this.fetchLatestReport();  // 新增
   },
   methods: {
     fetchLatestReport() {
-      axios.get('/latestreport/')
+      axios.get('/api/latestreport/')
         .then(response => {
           this.dailyReport = response.data.content; // 初始化时设置为最新日报内容
         })
@@ -137,7 +141,7 @@ export default {
         content: this.dailyReport
       };
 
-      axios.post('/savereport/', reportData)
+      axios.post('/api/savereport/', reportData)
         .then(response => {
           ElMessage.success('日报保存成功');
           this.isEditing = false;
@@ -149,7 +153,7 @@ export default {
         });
     },
     fetchStats() {
-      axios.get('/datastatus/')
+      axios.get('/api/datastatus/')
         .then(response => {
           this.stats[0].value.total = response.data.total_samples;
           this.stats[0].value.valid = response.data.valid_samples;
@@ -160,6 +164,9 @@ export default {
           console.error(error);
         });
     },
+    initChart() {
+      this.chart = echarts.init(this.$refs.chartContainer);
+    },
     fetchTrendData() {
       const params = {};
       if (this.dateRange.length === 2) {
@@ -167,24 +174,26 @@ export default {
         params.end_date = new Date(this.dateRange[1]).toISOString().split('T')[0];
       }
 
-      // 检查缓存
-      const cacheKey = `productionTrend_${params.start_date}_${params.end_date}`;
-      const cachedData = localStorage.getItem(cacheKey);
-
-      if (cachedData) {
-        const response = JSON.parse(cachedData);
-        this.updateChart(response);
-        return;
+      if (!params.start_date && !params.end_date) {
+        // 检查缓存
+        const cachedData = localStorage.getItem('productionTrend');
+        if (cachedData) {
+          const response = JSON.parse(cachedData);
+          this.updateChart(response);
+          return;
+        }
       }
 
       this.loading = true;  // 开始加载
-      axios.get('/productiontrend/', {
+      axios.get('/api/productiontrend/', {
         params,
         timeout: 5000,
       })
       .then(response => {
-        // 更新缓存
-        localStorage.setItem(cacheKey, JSON.stringify(response.data));
+        // 全部生产日期的数据缓存
+        if (!params.start_date && !params.end_date) {
+          localStorage.setItem('productionTrend', JSON.stringify(response.data));
+        }
         this.updateChart(response.data);
       })
       .finally(() => {
@@ -239,6 +248,30 @@ export default {
           }
         ],
       });
+    },
+    refreshTrendCache() {
+      console.log('Refreshing trend cache at:', new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }));
+      axios.get('/api/productiontrend/', {
+        timeout: 5000,
+      })
+      .then(response => {
+        localStorage.setItem('productionTrend', JSON.stringify(response.data));
+        console.log('Production trend cache updated at:', new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }));
+      })
+      .catch(error => {
+        console.error('Error refreshing trend cache:', error);
+      });
+    },
+    scheduleMidnightRefresh() {
+      // 从当前时间到下一个零点的时间间隔，并设置一个 setTimeout 在下一个零点触发 refreshTrendCache
+      const now = new Date();
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+      const timeUntilMidnight = midnight.getTime() - now.getTime();
+      // 通过 setInterval 每24小时再次触发 refreshTrendCache
+      setTimeout(() => {
+        this.refreshTrendCache();
+        setInterval(this.refreshTrendCache, 24 * 60 * 60 * 1000); // 每24小时刷新一次
+      }, timeUntilMidnight);
     },
 
     fetchAdditionalChartData() {

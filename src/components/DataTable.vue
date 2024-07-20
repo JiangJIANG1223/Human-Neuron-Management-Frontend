@@ -3,7 +3,7 @@
     <div class="data-table-container">
       <div class="button-group">
         <el-button type="primary" @click="openAddDialog" :disabled="isGuest">Upload</el-button>
-        <el-button @click="exportData" >Export</el-button>
+        <el-button @click="exportData" :disabled="isGuest">Export</el-button>
         <el-button @click="exploreSelected" >Explore</el-button>
       </div>
       <!-- <div style="display: flex; align-items: center; margin-bottom: 10px;"> -->
@@ -12,8 +12,9 @@
       <el-table ref="dataTable" :data="tableData" style="width: 100%" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55"></el-table-column>
         <el-table-column prop="cell_id" label="Cell ID" sortable></el-table-column>
-        <el-table-column prop="tissue_id" label="Tissue ID" sortable></el-table-column>
-        <el-table-column prop="slice_id" label="Slice ID" sortable></el-table-column>
+        <el-table-column prop="patient_number" label="Sample ID" sortable></el-table-column>
+        <el-table-column prop="tissue_block_number" label="Tissue ID" sortable></el-table-column>
+        <el-table-column prop="slice_number" label="Slice ID" sortable></el-table-column>
         <el-table-column prop="small_number" label="小编号" sortable></el-table-column>
         <el-table-column prop="fresh_perfusion" label="新鲜灌注(0:否;1:是)" sortable></el-table-column>
         <el-table-column prop="brain_region" label="脑区" sortable></el-table-column>
@@ -29,7 +30,7 @@
           <template v-slot="scope">
             <div class="action-buttons">
               <el-button size="small" type="primary" @click="viewData(scope.row)">View</el-button>
-              <el-button size="small" @click="downloadImage(scope.row)">Download</el-button>
+              <el-button size="small" @click="downloadV3DPBD(scope.row)" :loading="downloadLoading">Download</el-button>
             </div>
           </template>
         </el-table-column>
@@ -78,8 +79,8 @@
         </div>
       </el-form>
       <div slot="footer" class="dialog-footer">
-        <el-button type="primary" @click="submitForm">上传</el-button>
         <el-button @click="addDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitForm">上传</el-button>
       </div>
     </el-dialog>
 
@@ -179,6 +180,7 @@ export default {
       selectAllPages: false, 
       fullImageDialogVisible: false,
       fullImageUrl: '',
+      downloadLoading: false,
       // loading: false,
       form: this.getEmptyForm(),
       viewForm: this.getEmptyForm(),
@@ -299,7 +301,7 @@ export default {
         limit: this.pageSize,
         ...this.searchQuery
       };
-      axios.get('/singlecell/', {
+      axios.get('/api/singlecell/', {
         headers: {
           'Content-Type': 'application/json'
         },
@@ -345,7 +347,7 @@ export default {
       this.addDialogVisible = true;
     },
     setDefaultValues() {
-      axios.get('/defaultvalues/', {
+      axios.get('/api/defaultvalues/', {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -370,7 +372,7 @@ export default {
 
     submitForm() {
       // this.loading = true;
-      axios.post('/singlecell/', this.form)
+      axios.post('/api/singlecell/', this.form)
       .then(response => {
         this.tableData.push(response.data);
         this.fetchData();
@@ -390,7 +392,7 @@ export default {
       this.viewDialogVisible = true;
     },
     getImageUrl(imagePath) {
-      return `http://10.192.34.220:8000/image/${imagePath.replace('./', '')}`;
+      return `http://10.192.34.220:8000/api/image/${imagePath}`;
     },
     showFullImage(imagePath) {
       this.fullImageUrl = this.getImageUrl(imagePath);
@@ -400,7 +402,7 @@ export default {
       this.isEdit = true;
     },
     submitEdit() {
-      axios.put(`/singlecell/${this.viewForm.cell_id}`, this.viewForm, {
+      axios.put(`/api/singlecell/${this.viewForm.cell_id}`, this.viewForm, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -419,7 +421,7 @@ export default {
       this.deleteDialogVisible = true;
     },
     deleteData() {
-      axios.delete(`/singlecell/${this.viewForm.cell_id}`, {
+      axios.delete(`/api/singlecell/${this.viewForm.cell_id}`, {
         headers: {
           'Content-Type': 'application/json'
         }
@@ -435,6 +437,71 @@ export default {
         this.deleteDialogVisible = false;
         this.$message.error('数据删除失败');
       });
+    },
+    async downloadV3DPBD(row) {
+      if (!row.v3dpbd_file) {
+        console.error('v3dpbd_file is undefined');
+        this.$message.error('无此图像文件');
+        return;
+      }
+      const filePath = row.v3dpbd_file; // 获取文件路径
+      const cellId = row.cell_id; // 获取 cell_id
+      // 构建下载 URL downloadUrl, 包括编码后的 filePath 和 cell_id 作为查询参数
+      const downloadUrl = `/api/download?file_path=${encodeURIComponent(filePath)}&cell_id=${cellId}`;
+
+      console.log(filePath);
+      console.log(`Downloading from URL: ${downloadUrl}`);
+      this.downloadLoading = true; // 启动加载动画
+      // 发送下载请求
+      try {
+        const response = await axios({
+          url: downloadUrl,
+          method: 'GET',
+          responseType: 'blob', // 确保接收的是二进制文件流
+        });
+        // 处理响应
+        if (response.status === 200) {
+          console.log('Response:', response);
+          // 创建一个新的 Blob 对象, 包含响应数据, 并设置其 MIME 类型。
+          const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/octet-stream' });
+          // 使用 window.URL.createObjectURL(blob) 创建一个 URL, 用于指向生成的 Blob 对象。
+          const url = window.URL.createObjectURL(blob);
+          // 创建一个 a 元素, 并将其 href 属性设置为生成的 URL。
+          const link = document.createElement('a');
+          link.href = url;
+          // 根据响应的 Content-Type 头判断下载文件的类型, 设置下载的文件名
+          if (response.headers['content-type'] !== 'application/zip') {
+            link.setAttribute('download', filePath.split('/').pop()); // .v3dpbd 文件
+          } else {
+            link.setAttribute('download', `${cellId}.zip`);  // 使用 cellId 命名 zip 文件
+          }
+
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url); // 释放内存
+        } else {
+          console.error('Error downloading file:', response.statusText);
+          this.$message.error('下载文件失败');
+        }
+      } catch (error) {
+        console.error('Error details:', error); // 打印错误细节
+        if (error.response) {
+          // 请求已发出，但服务器响应了状态码不在2xx范围内
+          console.error('Error downloading file:', error.response.status, error.response.statusText);
+          this.$message.error(`下载文件失败：${error.response.statusText}`);
+        } else if (error.request) {
+          // 请求已发出但未收到响应
+          console.error('Error downloading file:', error.request);
+          this.$message.error('下载文件失败，未收到服务器响应');
+        } else {
+          // 其他错误
+          console.error('Error downloading file:', error.message);
+          this.$message.error('下载文件失败：' + error.message);
+        }
+      } finally {
+        this.downloadLoading = false; // 停止加载动画
+      }
     },
     exportData() {
       if (this.selectedRows.length === 0) {

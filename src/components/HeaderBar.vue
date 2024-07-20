@@ -12,8 +12,9 @@ export default {
   methods: {
     logoutAndRedirect() {
       localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
       localStorage.removeItem('is_guest');
+      localStorage.removeItem('productionTrend');
+      localStorage.removeItem('token_expiry');
       this.$router.push('/login');
     }
   }

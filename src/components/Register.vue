@@ -13,7 +13,6 @@
   
   <script>
   import axios from 'axios';
-  import { useRouter } from 'vue-router';
   
   export default {
     name: 'Register',
@@ -27,10 +26,10 @@
     },
     methods: {
       register() {
-        axios.post('http://localhost:8000/register/', this.registerForm)
+        axios.post('http://localhost:8000/api/register/', this.registerForm)
           .then(() => {
             this.$message.success('注册成功');
-            this.$router.push('/login');
+            this.$router.push('/api/login');
           })
           .catch(error => {
             console.error(error);
