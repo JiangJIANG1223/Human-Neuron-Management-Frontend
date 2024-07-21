@@ -26,7 +26,7 @@
     },
     methods: {
       register() {
-        axios.post('http://localhost:8000/api/register/', this.registerForm)
+        axios.post('/api/register/', this.registerForm)
           .then(() => {
             this.$message.success('注册成功');
             this.$router.push('/api/login');

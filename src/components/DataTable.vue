@@ -21,11 +21,6 @@
         <el-table-column prop="slice_thickness" label="切片厚度(μm)" sortable></el-table-column>
         <el-table-column prop="cell_depth" label="细胞深度(μm)" sortable></el-table-column>
         <el-table-column prop="inject_method" label="Injection (0:Manual;1:Auto)" sortable></el-table-column>
-        <!-- <el-table-column prop="inject_method" label="Manual/Auto Inject (0:Manual;1:Auto)" sortable></el-table-column> -->
-        <!-- <el-table-column prop="lucifer_yellow_immunohistochemistry" label="免疫组化(0:否;1:是)" sortable></el-table-column> -->
-        <!-- <el-table-column prop="xy_resolution" label="XY Resolution(*10e-3μm/px)" sortable></el-table-column>
-        <el-table-column prop="z_resolution" label="Z Resolution(*10e-3μm/px)" sortable></el-table-column>
-        <el-table-column prop="shooting_date" label="Tomography Date" sortable></el-table-column> -->
         <el-table-column label="操作" width="160">
           <template v-slot="scope">
             <div class="action-buttons">
@@ -90,7 +85,8 @@
         <!-- 显示图像 -->
         <div v-if="viewForm.image_file" class="image-container">
           <img 
-            :src="getImageUrl(viewForm.image_file)" 
+            v-if="imageUrl" 
+            :src="imageUrl" 
             alt="Image" class="image-preview" 
             style="width: 12%;" 
             @dblclick="showFullImage(viewForm.image_file)">
@@ -133,7 +129,7 @@
 
     <!-- Full-size image dialog -->
     <el-dialog title="Full Size Image" v-model="fullImageDialogVisible" width="28%">
-      <img :src="fullImageUrl" alt="Full Size Image" style="width: 100%;">
+      <img :src="fullImageUrl" alt="Full Size Image" style="width: 100%; height: auto;">
     </el-dialog>
 
     <!-- Dialog for delete confirmation -->
@@ -179,9 +175,9 @@ export default {
       selectedRows: reactive([]), // 全局的选中行数据数组
       selectAllPages: false, 
       fullImageDialogVisible: false,
+      imageUrl:'',
       fullImageUrl: '',
       downloadLoading: false,
-      // loading: false,
       form: this.getEmptyForm(),
       viewForm: this.getEmptyForm(),
       formSections: {
@@ -290,6 +286,11 @@ export default {
       },
       deep: true,
       immediate: true
+    },
+    viewDialogVisible(val) {
+      if (val) {
+        this.showImage();
+      }
     }
   },
 
@@ -391,11 +392,29 @@ export default {
       this.isEdit = false;
       this.viewDialogVisible = true;
     },
-    getImageUrl(imagePath) {
-      return `http://10.192.34.220:8000/api/image/${imagePath}`;
+
+    // getImageUrl(imagePath) {
+    //   return `http://10.192.34.220:8000/api/image/${imagePath}`;
+    // },
+    async getImageUrl(imagePath) {
+      try {
+        const response = await axios.get(`/api/image/${imagePath}`, { responseType: 'blob' });
+        const imageUrl = URL.createObjectURL(response.data);
+        return imageUrl;
+      } catch (error) {
+        console.error('Error fetching image:', error);
+        this.$message.error('获取图像失败');
+        return '';
+      }
     },
-    showFullImage(imagePath) {
-      this.fullImageUrl = this.getImageUrl(imagePath);
+    async showImage() {
+      if (this.viewForm.image_file) {
+        this.imageUrl = await this.getImageUrl(this.viewForm.image_file);
+      }
+    },
+    
+    async showFullImage(imagePath) {
+      this.fullImageUrl = await this.getImageUrl(imagePath);
       this.fullImageDialogVisible = true;
     },
     startEditing() {
@@ -713,4 +732,7 @@ export default {
   margin-top: 5px;
   font-weight: bold;
 }
+/* .full-image-preview {
+  width: 100%;
+} */
 </style>
