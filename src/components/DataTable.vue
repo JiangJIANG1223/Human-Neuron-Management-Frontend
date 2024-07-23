@@ -21,7 +21,7 @@
         <el-table-column prop="slice_thickness" label="切片厚度(μm)" sortable></el-table-column>
         <el-table-column prop="cell_depth" label="细胞深度(μm)" sortable></el-table-column>
         <el-table-column prop="inject_method" label="Injection (0:Manual;1:Auto)" sortable></el-table-column>
-        <el-table-column label="操作" width="160">
+        <el-table-column label="操作" width="180">
           <template v-slot="scope">
             <div class="action-buttons">
               <el-button size="small" type="primary" @click="viewData(scope.row)">View</el-button>
@@ -190,9 +190,6 @@ export default {
         sampleInfo:{
           title: '样本信息',
           items: [
-            // { label: 'Cell ID', prop: 'cell_id' },
-            // { label: 'Tissue ID', prop: 'tissue_id' },
-            // { label: 'Slice ID', prop: 'slice_id' },
             { label: '病人编号', prop: 'patient_number' },
             { label: '组织块编号', prop: 'tissue_block_number' },
             { label: '小编号', prop: 'small_number' },
@@ -216,9 +213,9 @@ export default {
           title: '灌注信息',
           items: [
             { label: '组织离体时间', prop: 'tissue_dissection_time' },
-            { label: '灌注开始时间(e.g.14:30)', prop: 'perfusion_start_time' },
-            { label: '灌注结束时间(e.g.18:30)', prop: 'perfusion_end_time' },
-            { label: 'after surgery(h)', prop: 'after_surgery_hours' },
+            { label: '* 灌注开始时间(e.g.14:30)', prop: 'perfusion_start_time' },
+            { label: '* 灌注结束时间(e.g.18:30)', prop: 'perfusion_end_time' },
+            { label: '* after surgery(h)', prop: 'after_surgery_hours' },
             { label: '* 细胞深度(微米)', prop: 'cell_depth' }, //
             { label: '* 灌注电流(nA)', prop: 'perfusion_current' },  //
             { label: '* 灌注时间(通电,mins)', prop: 'perfusion_time_on' }, //
@@ -548,8 +545,6 @@ export default {
       return {
         image_file: '',
         cell_id: '',
-        tissue_id: '',
-        slice_id: '',
         patient_number: '',
         tissue_block_number: '',
         small_number: '',

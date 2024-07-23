@@ -5,6 +5,7 @@ import Main from '@/components/Main.vue'; // Import Main.vue as the main compone
 import DataTable from '@/components/DataTable.vue';
 import DataExplorer from '@/components/DataExplorer.vue';
 import DataStatus from '@/components/DataStatus.vue';
+import SampleInfo from '@/components/SampleInfo.vue';
 
 const routes = [
   { path: '/login', name: 'Login', component: Login },
@@ -33,6 +34,11 @@ const routes = [
         path: 'status',
         name: 'DataStatus',
         component: DataStatus
+      },
+      {
+        path: 'sample',
+        name: 'SampleInfo',
+        component: SampleInfo
       }
     ]
   },

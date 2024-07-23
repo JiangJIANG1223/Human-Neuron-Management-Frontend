@@ -1,17 +1,21 @@
 <template>
   <div class="login-container">
     <el-card class="login-card">
-      <h3>登录</h3>
+      <h3 class="login-title">登录</h3>
       <el-form @submit.prevent="onSubmit">
-        <el-form-item class="input-item" label="用户名">
-          <el-input v-model="username" placeholder="请输入用户名"></el-input>
+        <el-form-item class="input-item" label="用 户">
+          <el-input v-model="username" placeholder="请输入用户"></el-input>
         </el-form-item>
-        <el-form-item class="input-item" label="密码">
+        <el-form-item class="input-item" label="密 码">
           <el-input type="password" v-model="password" placeholder="请输入密码"></el-input>
         </el-form-item>
-        <el-form-item class="button-container">
-          <el-button type="default" @click="enterAsGuest">以访客进入</el-button>
-          <el-button type="primary" @click="onSubmit">登录</el-button>
+        <el-form-item>
+          <div class="left-button">
+            <el-button type="default" @click="enterAsGuest">以访客进入</el-button>
+          </div>
+          <div class="right-button">
+            <el-button type="primary" @click="onSubmit">登录</el-button>
+          </div>
         </el-form-item>
       </el-form>
     </el-card>
@@ -67,7 +71,12 @@ export default {
 
 .login-card {
   width: 400px;
-  padding: 20px;
+  padding: 16px;
+}
+
+.login-title {
+  text-align: center;
+  margin-bottom: 30px;
 }
 
 .input-item {
@@ -79,8 +88,22 @@ export default {
   width: 100%;
 }
 
-.button-container {
+/* .button-container {
   display: flex;
   justify-content: space-between;
+} */
+
+.left-button {
+  flex: 1;
+  display: flex;
+  margin-top:7px;
+  justify-content: flex-start;
+}
+
+.right-button {
+  flex: 1;
+  display: flex;
+  margin-top: 7px;
+  justify-content: flex-end;
 }
 </style>
