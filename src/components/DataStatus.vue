@@ -13,8 +13,6 @@
                 {{ item.value }}
               </template>
             </div>
-            <!-- <div class="stat-title">{{ item.title }}</div>
-            <div class="stat-value">{{ item.value }}</div> -->
           </el-card>
         </div>
         <div class="trend-chart">
@@ -40,7 +38,7 @@
           v-model="dailyReport" 
           :readonly="!isEditing" 
           placeholder="最新日报内容" 
-          rows = '35'
+          rows="35"
           style="height: 780px;">
         </el-input>
         <div v-if="!isEditing">
@@ -57,21 +55,27 @@
       <div class="additional-charts">
         <el-card>
           <h3>患者年龄分布</h3>
-          <div ref="ageChartContainer" style="width: 100%; height: 400px;"></div>
+          <div ref="ageChartContainer" style="width: 100%; height: 500px;"></div>
         </el-card>
         <el-card>
           <h3>脑区分布(前十)</h3>
-          <div ref="brainRegionChartContainer" style="width: 100%; height: 400px;"></div>
+          <div ref="brainRegionChartContainer" style="width: 100%; height: 500px;"></div>
+        </el-card>
+      </div>
+      <div class="additional-charts">
+        <el-card>
+          <h3>有效样本来源</h3>
+          <div ref="sampleSourceChartContainer" style="width: 100%; height: 500px;"></div>
         </el-card>
         <el-card>
           <h3>免疫组化情况</h3>
-          <div ref="ihcChartContainer" style="width: 100%; height: 400px;"></div>
+          <div ref="ihcChartContainer" style="width: 100%; height: 500px;"></div>
         </el-card>
+
       </div>
     </div>
   </div>
 </template>
-
 
 <script>
 import axios from '@/axios';
@@ -89,12 +93,12 @@ export default {
       ],
       dateRange: [],
       dailyReport: '',
-      latestReport: '',  // 新增
-      isEditing: false, // 新增
+      isEditing: false,
       chart: null,
       ageChart: null,
       brainRegionChart: null,
       ihcChart: null,
+      sampleSourceChart: null,
       minDate: '',
       maxDate: '',
       datePickerOptions: {
@@ -107,21 +111,18 @@ export default {
     };
   },
   mounted() {
-    console.log('Component mounted at:', new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }));
     this.fetchStats();
     this.initCharts();
     this.fetchTrendData();
-    // this.refreshTrendCache();
-    // setInterval(this.refreshTrendCache, 3600000); // 3600000 毫秒 = 1 小时
     this.scheduleMidnightRefresh();
     this.fetchAdditionalChartData();
-    this.fetchLatestReport();  // 新增
+    this.fetchLatestReport();
   },
   methods: {
     fetchLatestReport() {
       axios.get('/api/latestreport/')
         .then(response => {
-          this.dailyReport = response.data.content; // 初始化时设置为最新日报内容
+          this.dailyReport = response.data.content;
         })
         .catch(error => {
           console.error('Error fetching latest report:', error);
@@ -129,15 +130,15 @@ export default {
     },
     startEditing() {
       this.isEditing = true;
-      this.dailyReport = ''; // 清空文本框内容，准备输入新的日报
+      this.dailyReport = '';
     },
     cancelEditing() {
       this.isEditing = false;
-      this.fetchLatestReport(); // 取消编辑后恢复显示最新日报内容
+      this.fetchLatestReport();
     },
     saveReport() {
       const reportData = {
-        report_date: new Date().toISOString().split('T')[0], // 当前日期
+        report_date: new Date().toISOString().split('T')[0],
         content: this.dailyReport
       };
 
@@ -145,7 +146,7 @@ export default {
         .then(response => {
           ElMessage.success('日报保存成功');
           this.isEditing = false;
-          this.fetchLatestReport(); // 保存后刷新显示最新日报内容
+          this.fetchLatestReport();
         })
         .catch(error => {
           console.error(error);
@@ -175,7 +176,6 @@ export default {
       }
 
       if (!params.start_date && !params.end_date) {
-        // 检查缓存
         const cachedData = localStorage.getItem('productionTrend');
         if (cachedData) {
           const response = JSON.parse(cachedData);
@@ -184,20 +184,19 @@ export default {
         }
       }
 
-      this.loading = true;  // 开始加载
+      this.loading = true;
       axios.get('/api/productiontrend/', {
         params,
         timeout: 5000,
       })
       .then(response => {
-        // 全部生产日期的数据缓存
         if (!params.start_date && !params.end_date) {
           localStorage.setItem('productionTrend', JSON.stringify(response.data));
         }
         this.updateChart(response.data);
       })
       .finally(() => {
-        this.loading = false;  // 加载完成
+        this.loading = false;
       });
     },
     updateChart(data) {
@@ -250,34 +249,30 @@ export default {
       });
     },
     refreshTrendCache() {
-      console.log('Refreshing trend cache at:', new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }));
       axios.get('/api/productiontrend/', {
         timeout: 5000,
       })
       .then(response => {
         localStorage.setItem('productionTrend', JSON.stringify(response.data));
-        console.log('Production trend cache updated at:', new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }));
       })
       .catch(error => {
         console.error('Error refreshing trend cache:', error);
       });
     },
     scheduleMidnightRefresh() {
-      // 从当前时间到下一个零点的时间间隔，并设置一个 setTimeout 在下一个零点触发 refreshTrendCache
       const now = new Date();
       const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
       const timeUntilMidnight = midnight.getTime() - now.getTime();
-      // 通过 setInterval 每24小时再次触发 refreshTrendCache
       setTimeout(() => {
         this.refreshTrendCache();
-        setInterval(this.refreshTrendCache, 24 * 60 * 60 * 1000); // 每24小时刷新一次
+        setInterval(this.refreshTrendCache, 24 * 60 * 60 * 1000);
       }, timeUntilMidnight);
     },
-
     fetchAdditionalChartData() {
       this.fetchAgeDistribution();
       this.fetchBrainRegionDistribution();
       this.fetchIhcDistribution();
+      this.fetchSampleSourceDistribution();
     },
     fetchAgeDistribution() {
       axios.get('/api/age-distribution')
@@ -328,8 +323,8 @@ export default {
               type: 'category',
               data: response.data.categories,
               axisLabel: {
-                interval: 0, // 显示所有标签
-                rotate: 45  // 旋转标签以避免重叠
+                interval: 0,
+                rotate: 45
               }
             },
             yAxis: {
@@ -390,7 +385,47 @@ export default {
           console.error('Error fetching IHC distribution:', error);
         });
     },
-
+    fetchSampleSourceDistribution() {
+      axios.get('/api/sample-source-distribution')
+        .then(response => {
+          this.sampleSourceChart.setOption({
+            tooltip: {
+              trigger: 'axis',
+              axisPointer: {
+                type: 'shadow'
+              }
+            },
+            xAxis: {
+              type: 'category',
+              data: response.data.categories,
+              axisLabel: {
+                interval: 0,
+                rotate: 45
+              }
+            },
+            yAxis: {
+              type: 'value'
+            },
+            series: [
+              {
+                data: response.data.data,
+                type: 'bar',
+                label: {
+                  show: true,
+                  position: 'top',
+                  formatter: '{c}'
+                },
+                itemStyle: {
+                  color: '#83bff6'
+                }
+              }
+            ]
+          });
+        })
+        .catch(error => {
+          console.error('Error fetching sample source distribution:', error);
+        });
+    },
     initCharts() {
       this.chart = echarts.init(this.$refs.chartContainer);
       this.chart.setOption({
@@ -434,7 +469,6 @@ export default {
         ],
       });
 
-      // 初始化患者年龄分布图
       this.ageChart = echarts.init(this.$refs.ageChartContainer);
       this.ageChart.setOption({
         tooltip: {
@@ -458,7 +492,6 @@ export default {
         ]
       });
 
-      // 初始化脑区分布图
       this.brainRegionChart = echarts.init(this.$refs.brainRegionChartContainer);
       this.brainRegionChart.setOption({
         tooltip: {
@@ -490,7 +523,6 @@ export default {
         ]
       });
 
-      // 初始化免疫组化分布图
       this.ihcChart = echarts.init(this.$refs.ihcChartContainer);
       this.ihcChart.setOption({
         tooltip: {
@@ -513,11 +545,41 @@ export default {
           }
         ]
       });
+
+      this.sampleSourceChart = echarts.init(this.$refs.sampleSourceChartContainer);
+      this.sampleSourceChart.setOption({
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: {
+            type: 'shadow'
+          }
+        },
+        xAxis: {
+          type: 'category',
+          data: []
+        },
+        yAxis: {
+          type: 'value'
+        },
+        series: [
+          {
+            data: [],
+            type: 'bar',
+            label: {
+              show: true,
+              position: 'top',
+              formatter: '{c}'
+            },
+            itemStyle: {
+              color: '#83bff6'
+            }
+          }
+        ]
+      });
     }
   }
 };
 </script>
-           
 
 <style scoped>
 .data-status-container {
@@ -525,7 +587,7 @@ export default {
   flex-direction: column;
   justify-content: space-between;
   padding: 20px;
-  gap: 30px; /* 增加不同部分的间隔 */
+  gap: 30px;
 }
 .top-section {
   display: flex;
@@ -550,7 +612,6 @@ export default {
   padding: 20px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
-
 .stat-title {
   font-size: 18px;
   margin-bottom: 10px;
@@ -572,14 +633,7 @@ export default {
   gap: 10px;
 }
 .additional-charts .el-card {
-  width: 30%;
-  padding: 20px;
+  width: 47%;
+  padding: 18px;
 }
 </style>
-
-
-
-
-
-
-
