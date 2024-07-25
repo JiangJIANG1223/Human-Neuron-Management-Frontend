@@ -191,7 +191,7 @@ export default {
           title: '样本信息',
           items: [
             { label: '病人编号', prop: 'patient_number' },
-            { label: '组织块编号', prop: 'tissue_block_number' },
+            { label: '组织编号', prop: 'tissue_block_number' },
             { label: '小编号', prop: 'small_number' },
             { label: '切片编号', prop: 'slice_number' },
             // { label: 'confirmed', prop: 'comfirmed' },

@@ -6,7 +6,7 @@
     </div>
     <el-table :data="sampleInfo" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55"></el-table-column>
-      <!-- <el-table-column prop="idx" label="Index"></el-table-column> -->
+      <!-- <el-table-column prop="idx" label="Index" width="120"></el-table-column> -->
       <el-table-column prop="total_id" label="总表编号"></el-table-column>
       <el-table-column prop="patient_id" label="患者编号"></el-table-column>
       <el-table-column prop="sample_id" label="样本编号"></el-table-column>
@@ -14,12 +14,19 @@
       <el-table-column prop="tissue_id" label="组织编号"></el-table-column>
       <el-table-column prop="patient_age" label="患者年龄"></el-table-column>
       <el-table-column prop="english_abbr_nj" label="英文简称(南京编)"></el-table-column>
-      <el-table-column label="操作" width="120">
+      <el-table-column label="操作" width="100">
         <template v-slot="scope">
           <el-button size="small" type="primary" @click="viewData(scope.row)">View</el-button>
         </template>
       </el-table-column>
     </el-table>
+    <el-pagination
+      background
+      layout="prev, pager, next"
+      :total="total"
+      :page-size="pageSize"
+      @current-change="handlePageChange"
+    ></el-pagination>
 
     <!-- Dialog for viewing and editing data -->
     <el-dialog title="View Sample Info" v-model="viewDialogVisible" width="74%">
@@ -90,6 +97,9 @@ export default {
       addDialogVisible: false,
       viewDialogVisible: false,
       isEdit: false,
+      total: 0,
+      pageSize: 20,
+      currentPage: 1,
       form: {
         total_id: '',
         patient_id: '',
@@ -191,10 +201,28 @@ export default {
   },
   methods: {
     fetchSampleInfo() {
-      axios.get('/api/sample_information')
+      const params = {
+        skip: (this.currentPage - 1) * this.pageSize,
+        limit: this.pageSize
+      };
+      axios.get('/api/sample_information/', {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        params: params
+      })
       .then(response => {
-        this.sampleInfo = response.data;
+        this.sampleInfo = response.data.data;
+        this.total = response.data.total;
+      })
+      .catch(error => {
+        console.error(error);
+        this.$message.error('Failed to load sample information');
       });
+    },
+    handlePageChange(page) {
+      this.currentPage = page;
+      this.fetchSampleInfo();
     },
     openAddDialog() {
       this.addDialogVisible = true;
