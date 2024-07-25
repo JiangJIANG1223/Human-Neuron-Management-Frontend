@@ -1,11 +1,12 @@
 <template>
   <div>
     <div class="button-group">
-      <el-button type="primary" @click="openAddDialog">Upload</el-button>
-      <el-button @click="exportData">Export</el-button>
+      <el-button type="primary" @click="openAddDialog" :disabled="isGuest">Upload</el-button>
+      <el-button @click="exportData" :disabled="isGuest">Export</el-button>
     </div>
     <el-table :data="sampleInfo" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55"></el-table-column>
+      <!-- <el-table-column prop="idx" label="Index"></el-table-column> -->
       <el-table-column prop="total_id" label="总表编号"></el-table-column>
       <el-table-column prop="patient_id" label="患者编号"></el-table-column>
       <el-table-column prop="sample_id" label="样本编号"></el-table-column>
@@ -40,7 +41,7 @@
         </div>
         <div class="right-buttons">
           <el-button @click="viewDialogVisible = false">取消</el-button>
-          <el-button v-if="!isEdit" type="primary" @click="startEditing">编辑</el-button>
+          <el-button v-if="!isEdit" type="primary" @click="startEditing" :disabled="isGuest">编辑</el-button>
           <el-button v-if="isEdit" type="primary" @click="submitEdit">保存</el-button>
         </div>
       </div>
@@ -76,6 +77,12 @@ import * as XLSX from 'xlsx';
 
 export default {
   name: 'SampleInfo',
+  props: {
+    isGuest: {
+      type: Boolean,
+      default: false
+    }
+  },
   data() {
     return {
       sampleInfo: [],
