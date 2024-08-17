@@ -4,7 +4,10 @@
       <el-button type="primary" @click="openAddDialog" :disabled="isGuest">Upload</el-button>
       <el-button @click="exportData" :disabled="isGuest">Export</el-button>
     </div>
-    <el-table :data="sampleInfo" @selection-change="handleSelectionChange">
+    <div class="select-all-container" style="display: flex; align-items: center; margin-top: 30px; margin-bottom: 2px; padding-left: 13px;">
+      <el-checkbox v-model="selectAllPages" @change="handleSelectAllPages"> Select All Pages </el-checkbox>
+    </div>
+    <el-table ref="sampleInfo" :data="sampleInfo" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55"></el-table-column>
       <!-- <el-table-column prop="idx" label="Index" width="120"></el-table-column> -->
       <el-table-column prop="total_id" label="总表编号"></el-table-column>
@@ -81,6 +84,7 @@
 <script>
 import axios from '@/axios';
 import * as XLSX from 'xlsx';
+import { ElLoading } from 'element-plus';
 
 export default {
   name: 'SampleInfo',
@@ -94,6 +98,7 @@ export default {
     return {
       sampleInfo: [],
       selectedSamples: [],
+      selectAllPages: false,
       addDialogVisible: false,
       viewDialogVisible: false,
       isEdit: false,
@@ -214,16 +219,95 @@ export default {
       .then(response => {
         this.sampleInfo = response.data.data;
         this.total = response.data.total;
+        // 在分页数据加载后恢复之前选中的状态
+        this.$nextTick(() => {
+          this.sampleInfo.forEach(row => {
+            const isSelected = this.selectedSamples.some(selected => selected.idx === row.idx);
+            if (isSelected) {
+              this.$refs.sampleInfo.toggleRowSelection(row, true);
+            }
+          });
+        });
       })
       .catch(error => {
         console.error(error);
         this.$message.error('Failed to load sample information');
       });
     },
+        // handleSelectionChange(val) {
+    //   if (!this.selectAllPages) {
+    //     this.selectedSamples = val;
+    //   }
+    // },
+    handleSelectionChange(val) {
+      if (!this.selectAllPages) {
+        // 合并当前页选中的数据到 selectedSamples 中
+        const selectedIdxs = val.map(item => item.idx);
+        this.selectedSamples = this.selectedSamples.filter(item => !selectedIdxs.includes(item.idx)).concat(val);
+      }
+    },
+
     handlePageChange(page) {
       this.currentPage = page;
       this.fetchSampleInfo();
     },
+
+    async handleSelectAllPages(value) {
+      this.selectAllPages = value;
+      if (value) {
+        // 显示加载动画
+        const loadingInstance = ElLoading.service({
+          target: this.$refs.sampleInfo.$el,
+          text: '加载中',
+          background: 'rgba(255, 255, 255, 0.6)'
+        });
+
+        try {
+          // 获取所有页的数据
+          const allData = await this.fetchAllSampleInfo();
+          this.selectedSamples = allData;
+          this.sampleInfo = this.sampleInfo.map(row => {
+            return { ...row, selected: true };
+          });
+          this.$refs.sampleInfo.clearSelection();
+          this.$nextTick(() => {
+            this.$refs.sampleInfo.toggleAllSelection();
+          });
+        } finally {
+          loadingInstance.close();
+        }
+      } else {
+        this.selectedSamples = [];
+        this.sampleInfo = this.sampleInfo.map(row => {
+          return { ...row, selected: false };
+        });
+        this.$refs.sampleInfo.clearSelection();
+      }
+    },
+
+    fetchAllSampleInfo() {
+      return axios.get('/api/sample_information/', {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        params: {
+          limit: this.total,
+          skip: 0
+        }
+      }).then(response => {
+        return response.data.data;
+      });
+    },
+    // handlePageChange(page) {
+    //   this.currentPage = page;
+    //   this.fetchSampleInfo();
+    // },
+    // handleSelectionChange(val) {
+    //   if (!this.selectAllPages) {
+    //     this.selectedSamples = val;
+    //   }
+    // },
+
     openAddDialog() {
       this.addDialogVisible = true;
     },
@@ -255,9 +339,9 @@ export default {
         this.$message.error('数据新增失败');
       });
     },
-    handleSelectionChange(val) {
-      this.selectedSamples = val;
-    },
+    // handleSelectionChange(val) {
+    //   this.selectedSamples = val;
+    // },
     exportData() {
       if (this.selectedSamples.length === 0) {
         this.$message.warning('请选择要导出的数据');

@@ -2,13 +2,18 @@
   <div>
     <div class="data-table-container">
       <div class="button-group">
-        <el-button type="primary" @click="openAddDialog" :disabled="isGuest">Upload</el-button>
-        <el-button @click="exportData" :disabled="isGuest">Export</el-button>
-        <el-button @click="exploreSelected" >Explore</el-button>
+        <div class="left-buttons">
+          <el-button type="primary" @click="openAddDialog" :disabled="isGuest">Upload</el-button>
+          <el-button @click="exportData" :disabled="isGuest">Export</el-button>
+          <el-button @click="exploreSelected" >Explore</el-button>
+        </div>
+        <div class="right-buttons">
+          <el-button type="primary" @click="openRecordBookDialog">Record Book</el-button>
+        </div>
       </div>
-      <!-- <div style="display: flex; align-items: center; margin-bottom: 10px;"> -->
-      <!-- <el-checkbox v-model="selectAllPages" @change="handleSelectAllPages">全选</el-checkbox> -->
-      <!-- </div> -->
+      <div class="select-all-container" style="display: flex; align-items: center; margin-top: 30px; margin-bottom: -8px; padding-left: 13px;">
+        <el-checkbox v-model="selectAllPages" @change="handleSelectAllPages"> Select All Pages </el-checkbox>
+      </div>
       <el-table ref="dataTable" :data="tableData" style="width: 100%" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55"></el-table-column>
         <el-table-column prop="cell_id" label="Cell ID" sortable></el-table-column>
@@ -47,8 +52,7 @@
           <el-col :span="12" class="cell-id-col">
             <el-form-item label="Cell ID" label-width="50%" class="custom-form-item cell-id-item">
               <el-input 
-                v-model="form.cell_id" 
-                :style="{ color: isDefaultValue.cell_id ? 'gray' : 'black', fontWeight: 'bold' }"
+                v-model="form.cell_id"
                 @input="handleInput('cell_id')"
               ></el-input>
             </el-form-item>
@@ -60,14 +64,59 @@
           <el-row :gutter="20">
             <el-col :span="6" v-for="(item, index) in section.items" :key="index">
               <el-form-item 
-              :label="item.label" class="custom-form-item"
-              :class="{'custom-form-item': true, 'highlight-label': ['Document Name', 'overlap'].includes(item.prop)}"
+                :label="item.label" 
+                class="custom-form-item"
               >
-                <el-input 
-                  v-model="form[item.prop]" 
-                  :style="{ color: isDefaultValue[item.prop] ? 'gray' : 'black' }"
-                  @input="handleInput(item.prop)"
-                ></el-input>
+              <component
+                :is="getComponentType(item.prop)"
+                v-model="form[item.prop]"
+                :filterable="isFilterable(item.prop)"
+                :allow-create="isAllowCreate(item.prop)"
+              >
+                <el-option 
+                  v-if="item.prop === 'fresh_perfusion' || item.prop === 'post_perfusion_4percent_pfa' || item.prop === 'post_perfusion_10percent_formalin' || item.prop === 'inject_method' || item.prop === 'immunohistochemistry' || item.prop === 'tiling'"
+                  v-for="option in [{value: 0, label: '0'}, {value: 1, label: '1'}]" 
+                  :key="option.value" 
+                  :label="option.label" 
+                  :value="option.value"
+                ></el-option>
+                
+                <el-option 
+                  v-if="item.prop === 'image_size'"
+                  v-for="option in ['512*512', '1048*1048', '2048*2048']" 
+                  :key="option" 
+                  :label="option" 
+                  :value="option"
+                ></el-option>
+
+                <el-option 
+                  v-if="item.prop === 'after_surgery_hours'"
+                  v-for="option in [
+                                    '-', '1hAFTsur', '2hAFTsur', '3hAFTsur', '4hAFTsur', '5hAFTsur', 
+                                    '6hAFTsur', '7hAFTsur', '8hAFTsur', '9hAFTsur', '10hAFTsur', 
+                                    '1dAFTsur', '2dAFTsur'
+                                    ]" 
+                  :key="option" 
+                  :label="option" 
+                  :value="option"
+                ></el-option>
+
+                <el-option 
+                  v-if="item.prop === 'dye_name' || item.prop === 'ihc_category'"
+                  v-for="option in [
+                                    'Lucifer Yellow', 'Cascade Blue'
+                                    ]" 
+                  :key="option" 
+                  :label="option" 
+                  :value="option"
+                ></el-option>
+                <el-option 
+                  v-if="item.prop === 'brain_region'"
+                  v-for="option in brainRegionOptions" 
+                  :key="option.value" 
+                  :label="option.label" 
+                  :value="option.value"></el-option>
+              </component>
               </el-form-item>
             </el-col>
           </el-row>
@@ -75,7 +124,7 @@
       </el-form>
       <div slot="footer" class="dialog-footer">
         <el-button @click="addDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitForm">上传</el-button>
+        <el-button type="primary" @click="submitForm" :loading="uploadLoading">上传</el-button>
       </div>
     </el-dialog>
 
@@ -139,6 +188,28 @@
         <el-button @click="deleteDialogVisible = false">取消</el-button>
         <el-button type="danger" @click="deleteData">确认</el-button>
       </div>
+    </el-dialog>  
+
+    <!-- Dialog for Record Book -->
+    <el-dialog title="Record Book" v-model="recordBookDialogVisible" width="50%">
+      <el-upload
+        list-type="picture"
+        :before-upload="uploadImage"
+        :file-list="fileList">
+        <el-button size="small" type="primary">Upload Pic</el-button>
+      </el-upload>
+      <el-table :data="recordBookPics" style="width: 100%">
+        <el-table-column prop="name" label="File Name" width="180">
+          <template v-slot="scope">
+            <el-link type="primary" @click="handlePictureCardPreview(scope.row)">
+              {{ scope.row.name }}
+            </el-link>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-dialog title="Preview Image" v-model="previewDialogVisible" width="50%">
+        <img width="100%" :src="previewImageUrl" alt="">
+      </el-dialog>
     </el-dialog>
   </div>
 </template>
@@ -148,6 +219,7 @@
 import axios from '@/axios';
 import * as XLSX from 'xlsx';
 import { reactive,toRaw } from 'vue';
+import { ElLoading } from 'element-plus';
 
 export default {
   name: 'DataTable',
@@ -177,16 +249,11 @@ export default {
       fullImageDialogVisible: false,
       imageUrl:'',
       fullImageUrl: '',
+      uploadLoading: false,
       downloadLoading: false,
       form: this.getEmptyForm(),
       viewForm: this.getEmptyForm(),
       formSections: {
-        // cellID:{
-        //   title: '',
-        //   items: [
-        //     { label: 'Cell ID', prop: 'cell_id' },
-        //   ]
-        // }, 
         sampleInfo:{
           title: '样本信息',
           items: [
@@ -222,7 +289,8 @@ export default {
             { label: '灌注时间(未通电,mins)', prop: 'perfusion_time_off' },
             { label: '实验温度(℃)', prop: 'experiment_temperature' },
             { label: '实验湿度(%RH)', prop: 'experiment_humidity' },
-            { label: '染料(LY)浓度(%)', prop: 'dye_concentration' },
+            { label: '染料名称', prop: 'dye_name' },
+            { label: '染料浓度(%)', prop: 'dye_concentration' },
             { label: 'Manual/Auto Inject(0:Manual;1:Auto)', prop: 'inject_method' },
             { label: '灌注日期', prop: 'perfusion_date' },
             { label: '灌注人员', prop: 'perfusion_staff' }
@@ -231,8 +299,9 @@ export default {
         ihcInfo:{
           title: '免疫组化',
           items: [
-            { label: 'Lucifer yellow免疫染色(0:否;1:是)', prop: 'lucifer_yellow_immunohistochemistry' },
-            { label: 'Anti-Lucifer yellow 浓度', prop: 'anti_lucifer_yellow_concentration' },
+            { label: '类别', prop: 'ihc_category' },
+            { label: '免疫染色(0:否;1:是)', prop: 'immunohistochemistry' },
+            { label: '一抗浓度', prop: 'first_antibody_concentration' },
             { label: '二抗波段', prop: 'secondary_antibody_band' },
             { label: 'DAPI浓度', prop: 'dapi_concentration' }
           ]
@@ -253,6 +322,7 @@ export default {
             { label: '* Image Cell ID', prop: 'image_cell_id' },  //
             { label: '拍摄日期', prop: 'shooting_date' },
             { label: '拍摄人员', prop: 'shooting_staff' },
+            { label: 'Image Size', prop: 'image_size' }, ////
             { label: 'confirmed', prop: 'confirmed_1' }
           ]
         },
@@ -273,7 +343,14 @@ export default {
           ]
         }
       },
-      isDefaultValue: {}  // 初始化 isDefaultValue
+      // isDefaultValue: {}, // 初始化 isDefaultValue
+      brainRegionOptions: [],
+
+      recordBookDialogVisible: false,
+      previewDialogVisible: false,
+      previewImageUrl: '',
+      fileList: [],
+      recordBookPics: []
     };
   },
   watch: {
@@ -290,7 +367,9 @@ export default {
       }
     }
   },
-
+  mounted() {
+    this.fetchOptions();
+  },
   methods: {
     fetchData() {
       let that = this
@@ -328,13 +407,68 @@ export default {
         console.error(error);
       });
     },
+
+    async handleSelectAllPages(value) {
+      this.selectAllPages = value;
+      if (value) {
+        // 显示加载动画
+        const loadingInstance = ElLoading.service({
+          target: this.$refs.dataTable.$el,  // 将加载动画显示在表格上
+          text: '加载中',
+          background: 'rgba(255, 255, 255, 0.6)'  // 设置遮罩的背景颜色和透明度
+        });
+
+        try {
+          // 选择所有页的数据
+          const allData = await this.fetchAllData();
+          this.selectedRows = allData;
+          this.tableData = this.tableData.map(row => {
+            return { ...row, selected: true };  // 更新数据中的选中状态
+          });
+          this.$refs.dataTable.clearSelection();
+          this.$nextTick(() => {
+            this.$refs.dataTable.toggleAllSelection();
+          });
+        } finally {
+          // 关闭加载动画
+          loadingInstance.close();
+        }
+      } else {
+        // 清空选择
+        this.selectedRows = [];
+        this.tableData = this.tableData.map(row => {
+          return { ...row, selected: false };  // 更新数据中的选中状态
+        });
+        this.$refs.dataTable.clearSelection();
+      }
+    },
+    fetchAllData() {
+      // 获取所有页的数据的逻辑，可能需要分页请求所有数据并合并
+      return axios.get('/api/singlecell/', {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        params: {
+          ...this.searchQuery,
+          limit: this.totalItems,  // 获取所有数据
+          skip: 0
+        }
+      }).then(response => {
+        return response.data.data;  // 返回所有数据
+      });
+    },
     handleSelectionChange(val) {
-      // 先保存当前页的选中行
-      const pageRows = this.tableData.map(row => row.cell_id);
-      // 移除当前页中未选中的行
-      this.selectedRows = this.selectedRows.filter(row => !pageRows.includes(row.cell_id));
-      // 添加当前页中选中的行
-      this.selectedRows.push(...val.map(row => toRaw(row)));
+      if (!this.selectAllPages) {
+        // 先保存当前页的选中行
+        const pageRows = this.tableData.map(row => row.cell_id);
+        // 移除当前页中未选中的行
+        this.selectedRows = this.selectedRows.filter(row => !pageRows.includes(row.cell_id));
+        // 添加当前页中选中的行
+        this.selectedRows.push(...val.map(row => toRaw(row)));
+      }
+    },
+    selectable(row) {
+      return row.selected;  // 通过 row 的 selected 属性控制选中状态
     },
     handlePageChange(page) {
       this.currentPage = page;
@@ -353,34 +487,55 @@ export default {
       .then(response => {
         Object.assign(this.form, response.data.last_record);
         this.form.cell_id = response.data.cell_id;
-        this.isDefaultValue = {}; // 清空上次的默认值状态
-        for (const key in this.form) {
-          if (this.form[key]) {
-            this.isDefaultValue[key] = true;
-          }
-        }
       })
       .catch(error => {
         console.error(error);
       });
     },
-    handleInput(prop) {
-      this.isDefaultValue[prop] = false;
-    },
+    getComponentType(prop) {
+      const selectProps = [
+        'brain_region', 
+        'fresh_perfusion', 'post_perfusion_4percent_pfa', 'post_perfusion_10percent_formalin',
 
+        'after_surgery_hours', 'dye_name',
+        'inject_method', 
+
+        'ihc_category', 
+        'immunohistochemistry',
+
+        'image_size',
+        'tiling', 
+      ];
+      return selectProps.includes(prop) ? 'el-select' : 'el-input';
+    },
+    isFilterable(prop) {
+      return ['brain_region', 'after_surgery_hours', 'dye_name', 'ihc_category', 'image_size'].includes(prop);
+    },
+    isAllowCreate(prop) {
+      return ['brain_region', 'image_size', 'after_surgery_hours'].includes(prop);
+    },
+    fetchOptions() {
+      axios.get('/api/get-options')  // 明确指定后端路径
+        .then(response => {
+          this.brainRegionOptions = response.data.brain_region_options;
+        })
+        .catch(error => {
+          console.error('Error fetching options:', error);
+        })
+    },
     submitForm() {
-      // this.loading = true;
+      this.uploadLoading = true;
       axios.post('/api/singlecell/', this.form)
       .then(response => {
         this.tableData.push(response.data);
         this.fetchData();
         this.addDialogVisible = false;
-        // this.loading = false;
+        this.uploadLoading = false;
         this.$message.success('数据新增成功');
       })
       .catch(error => {
         console.error(error);
-        // this.loading = false;
+        this.uploadLoading = false;
         this.$message.error('数据新增失败');
       });
     },
@@ -543,13 +698,12 @@ export default {
     },
     getEmptyForm() {
       return {
-        image_file: '',
         cell_id: '',
         patient_number: '',
         tissue_block_number: '',
         small_number: '',
         slice_number: '',
-        comfirmed: '',
+        confirmed: '',
         slicing_method: '',
         slicing_and_fixation_order: '',
         pre_fixation_days: '',
@@ -561,7 +715,7 @@ export default {
         post_perfusion_10percent_formalin: '',
         brain_region: '',
         slice_thickness: '',
-        comfirmed_0: '',
+        confirmed_0: '',
         tissue_dissection_time: '',
         perfusion_start_time: '',
         perfusion_end_time: '',
@@ -570,14 +724,16 @@ export default {
         perfusion_current: '',
         perfusion_time_on: '',
         perfusion_time_off: '',
-        dye_concentration: '',
+        dye_name:'',
+        dye_concentration: '',  
         experiment_temperature: '',
         experiment_humidity: '',
         inject_method: '',
         perfusion_date: '',
         perfusion_staff: '',
-        lucifer_yellow_immunohistochemistry: '',
-        anti_lucifer_yellow_concentration: '',
+        ihc_category: '',
+        immunohistochemistry: '',
+        first_antibody_concentration: '',
         secondary_antibody_band: '',
         dapi_concentration: '',
         laser_wavelength: '',
@@ -593,7 +749,8 @@ export default {
         image_cell_id: '',
         shooting_date: '',
         shooting_staff: '',
-        confirmed: '',
+        image_size: '',
+        confirmed_1: '',
         reconstruction_staff: '',
         status: '',
         inspection_staff: '',
@@ -601,6 +758,64 @@ export default {
         sealed_slide: '',
         status_1: ''
       };
+    },
+
+    openRecordBookDialog() {
+      this.recordBookDialogVisible = true;
+      this.fetchRecordBookPics();
+    },
+    handleUploadSuccess(response, file, fileList) {
+      this.$message.success('Upload successful');
+      this.fileList = fileList;
+      this.fetchRecordBookPics(); // Refresh the pictures list after upload
+    },
+    handlePictureCardPreview(file) {
+      // 使用动态的 axios 默认路径
+      this.previewImageUrl = `${axios.defaults.baseURL}/Record_Book_Pics/${file.name}`;
+      this.previewDialogVisible = true;
+    },
+    beforeUpload(file) {
+      const isJPG = file.type === 'image/jpeg';
+      const isPNG = file.type === 'image/png';
+      const isLt20M = file.size / 1024 / 1024 < 20;
+
+      if (!isJPG && !isPNG) {
+        this.$message.error('Upload image should be JPG or PNG format!');
+      }
+      if (!isLt20M) {
+        this.$message.error('Upload image size should not exceed 20MB!');
+      }
+      return (isJPG || isPNG) && isLt20M;
+    },
+    async uploadImage(file) {
+      const isValid = this.beforeUpload(file);
+      if (!isValid) return false;
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await axios.post('/api/upload_pics', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        this.handleUploadSuccess(response, file, this.fileList);
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        this.$message.error('Failed to upload image');
+      }
+      return false; // prevent default upload behavior
+    },
+    fetchRecordBookPics() {
+      axios.get('/api/record_book_pics')
+        .then(response => {
+          this.recordBookPics = response.data.pics.map(pic => ({ name: pic }));
+        })
+        .catch(error => {
+          console.error('Error fetching record book pics:', error);
+          this.$message.error('Failed to fetch record book pics');
+        });
     }
   }
 };
@@ -615,6 +830,7 @@ export default {
   margin-top: 25px;
 }
 .button-group {
+  display: flex; 
   margin-bottom: 20px;
 }
 
@@ -638,7 +854,6 @@ export default {
   display: flex;
   justify-content: flex-end;
 }
-
 
 .el-dialog {
   z-index: 2000 !important;

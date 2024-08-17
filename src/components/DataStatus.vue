@@ -74,6 +74,13 @@
 
       </div>
     </div>
+    <el-dialog
+      :title="dialogTitle"
+      v-model="dialogVisible"
+      width="50%">
+      <div v-html="dialogContent"></div>
+      <div ref="brainRegionChart" style="width: 100%; height: 400px; margin-top: 20px;"></div>
+    </el-dialog>
   </div>
 </template>
 
@@ -108,6 +115,10 @@ export default {
           return time.getTime() < minDate.getTime() || time.getTime() > maxDate.getTime();
         }
       },
+      dialogVisible: false,
+      dialogContent: '',
+      dialogTitle: '',
+      brainRegionChart: null // 脑区分布图表实例
     };
   },
   mounted() {
@@ -117,6 +128,17 @@ export default {
     this.scheduleMidnightRefresh();
     this.fetchAdditionalChartData();
     this.fetchLatestReport();
+  },
+  watch: {
+    dialogVisible(val) {
+      if (val) {
+        this.$nextTick(() => {
+          if (this.brainRegionChartInstance) {
+            this.brainRegionChartInstance.resize(); // 确保在对话框打开时图表大小正确
+          }
+        });
+      }
+    }
   },
   methods: {
     fetchLatestReport() {
@@ -388,6 +410,13 @@ export default {
     fetchSampleSourceDistribution() {
       axios.get('/api/sample-source-distribution')
         .then(response => {
+          const categories = response.data.categories;
+          const data = response.data.data;
+          const sourcePatientNumbers = response.data.source_patient_numbers;
+          const patientCellCount = response.data.patient_cell_count; // 获取每个 patient_number 的细胞数量
+          const sourceCellCount = response.data.source_cell_count;
+          const sourceBrainRegionDistribution = response.data.source_brain_region_distribution;
+
           this.sampleSourceChart.setOption({
             tooltip: {
               trigger: 'axis',
@@ -397,7 +426,7 @@ export default {
             },
             xAxis: {
               type: 'category',
-              data: response.data.categories,
+              data: categories,
               axisLabel: {
                 interval: 0,
                 rotate: 45
@@ -408,7 +437,7 @@ export default {
             },
             series: [
               {
-                data: response.data.data,
+                data: data,
                 type: 'bar',
                 label: {
                   show: true,
@@ -421,11 +450,67 @@ export default {
               }
             ]
           });
+
+          // Add event listener for click event
+          this.sampleSourceChart.on('click', (params) => {
+            const source = categories[params.dataIndex];
+            const patients = sourcePatientNumbers[source];
+            const cellCount = sourceCellCount[source];
+            const brainRegionDistribution = sourceBrainRegionDistribution[source];
+
+            // Calculate total patient numbers and valid patient numbers
+            const totalPatientCount = patients.length;
+            const validPatientCount = patients.filter(patient => patientCellCount[patient] > 0).length;
+
+            // Generate patient numbers with cell counts in parentheses
+            const patientInfo = patients.map(patient => `${patient} (${patientCellCount[patient]})`).join(', ');
+
+            // Prepare dialog content
+            this.dialogTitle = `Details for Source: ${source}`;
+            this.dialogContent = `
+              <strong>Patient Numbers:</strong> ${totalPatientCount}(有效样本数)/${validPatientCount}(有效数据样本数)<br/>
+              ${patientInfo}<br/>
+              <strong>Total Cell Count:</strong> ${cellCount}<br/>
+              <strong>Brain Region Distribution:</strong><br/>
+              ${Object.entries(brainRegionDistribution).map(([region, count]) => `${region}: ${count}`).join('<br/>')}
+            `;
+            this.dialogVisible = true; // Show the dialog
+
+            // Initialize or update the brain region chart
+            this.$nextTick(() => {
+              if (!this.brainRegionChartInstance) {
+                this.brainRegionChartInstance = echarts.init(this.$refs.brainRegionChart);
+              }
+              const brainRegionData = Object.entries(brainRegionDistribution).map(([region, count]) => ({ name: region, value: count }));
+
+              this.brainRegionChartInstance.setOption({
+                tooltip: {
+                  trigger: 'item'
+                },
+                series: [
+                  {
+                    name: 'Brain Region Distribution',
+                    type: 'pie',
+                    radius: '70%',
+                    data: brainRegionData,
+                    emphasis: {
+                      itemStyle: {
+                        shadowBlur: 10,
+                        shadowOffsetX: 0,
+                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                      }
+                    }
+                  }
+                ]
+              });
+            });
+          });
         })
         .catch(error => {
           console.error('Error fetching sample source distribution:', error);
-        });
+      });
     },
+
     initCharts() {
       this.chart = echarts.init(this.$refs.chartContainer);
       this.chart.setOption({

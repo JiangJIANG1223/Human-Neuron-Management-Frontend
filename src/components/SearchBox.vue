@@ -7,9 +7,10 @@
         </template>
         <el-form ref="searchForm" :model="searchQuery" label-width="150px" class="custom-box-content">
           <el-row :gutter="20">
+            <!-- 第一行：五个搜索栏 -->
             <el-col :span="6">
               <el-form-item label="Cell ID">
-                <el-row :gutter="10">
+                <el-row :gutter="5">
                   <el-col :span="12">
                     <el-input v-model="searchQuery.cell_id_start" placeholder="Start"></el-input>
                   </el-col>
@@ -43,6 +44,10 @@
                 </el-select>
               </el-form-item>
             </el-col>
+          </el-row>
+
+          <!-- 第二行：四个搜索栏 -->
+          <el-row :gutter="20" style="margin-top: 20px;">
             <el-col :span="6">
               <el-form-item label="Manual/Auto Inject">
                 <el-select v-model="searchQuery.inject_method" placeholder="Chose Manual/Auto Inject">
@@ -69,13 +74,19 @@
                 </el-select>
               </el-form-item>
             </el-col>  
-
-            <el-col :span="6">
+            <!-- <el-col :span="5">
               <el-form-item label="Lucifer Yellow IHC">
-                <el-select v-model="searchQuery.lucifer_yellow_immunohistochemistry" placeholder="Chose Lucifer Yellow IHC">
+                <el-select v-model="searchQuery.immunohistochemistry" placeholder="Chose Lucifer Yellow IHC">
                   <el-option label="None" value=""></el-option>
                   <el-option label="Yes" value="1"></el-option>
                   <el-option label="No" value="0"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col> -->
+            <el-col :span="6">
+              <el-form-item label="Sample Source">
+                <el-select v-model="searchQuery.source" placeholder="Chose Sample Source" @change="handleSourceChange">
+                  <el-option v-for="option in sourceOptions" :key="option" :label="option" :value="option"></el-option>
                 </el-select>
               </el-form-item>
             </el-col>
@@ -104,14 +115,16 @@ export default {
         patient_number: [],
         tissue_block_number: [],
         slice_number: [],
+        source: '',  // 新增的搜索条件
         inject_method: '',
         fresh_perfusion: '',
         brain_region: [],
-        lucifer_yellow_immunohistochemistry: ''
+        immunohistochemistry: ''
       },
       sampleIdOptions: [],
       tissueIdOptions: [],
       sliceIdOptions: [],
+      sourceOptions: [],  // 来源选项
       brainRegionOptions: [],
 
     };
@@ -131,6 +144,29 @@ export default {
         .catch(error => {
           console.error('Error fetching options:', error);
         });
+
+      // Fetch source options from /api/sample-source-distribution
+      axios.get('/api/sample-source-distribution')
+        .then(response => {
+          this.sourceOptions = response.data.categories;  // 来源选项
+        })
+        .catch(error => {
+          console.error('Error fetching source options:', error);
+        });
+    },
+    handleSourceChange(selectedSource) {
+    // 当选择来源时，获取并过滤 patient_number
+    axios.get('/api/sample-source-distribution')
+      .then(response => {
+        const sourcePatientNumbers = response.data.source_patient_numbers[selectedSource] || [];
+        const sampleIdValues = this.sampleIdOptions.map(option => option.value);
+
+        // 取 sourcePatientNumbers 和 sampleIdValues 的交集
+        this.searchQuery.patient_number = sourcePatientNumbers.filter(patientNumber => sampleIdValues.includes(patientNumber));
+      })
+      .catch(error => {
+        console.error('Error fetching patient numbers for source:', error);
+      });
     },
     search() {
       // Ensure array parameters are serialized correctly
@@ -151,9 +187,10 @@ export default {
         patient_number: [],
         tissue_block_number: [],
         slice_number: [],
+        source: '',  // 重置来源
         fresh_perfusion: '',
         brain_region: [],
-        lucifer_yellow_immunohistochemistry: ''
+        immunohistochemistry: ''
       };
       // this.$emit('search', this.searchQuery); // 确保重置后表格数据也被重置
     },
