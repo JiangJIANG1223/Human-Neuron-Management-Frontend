@@ -44,10 +44,7 @@
                 </el-select>
               </el-form-item>
             </el-col>
-          </el-row>
-
-          <!-- 第二行：四个搜索栏 -->
-          <el-row :gutter="20" style="margin-top: 20px;">
+          
             <el-col :span="6">
               <el-form-item label="Manual/Auto Inject">
                 <el-select v-model="searchQuery.inject_method" placeholder="Chose Manual/Auto Inject">
@@ -90,11 +87,12 @@
                 </el-select>
               </el-form-item>
             </el-col>
-            <el-col :span="24" class="button-group">
-              <el-button type="primary" @click="search" style="margin-left: 10px;">Search</el-button>
-              <el-button type="default" @click="reset">Reset</el-button>
-            </el-col>
           </el-row>
+          <el-col :span="24" class="button-group">
+            <el-button type="primary" @click="search" style="margin-left: 10px;">Search</el-button>
+            <el-button type="default" @click="reset">Reset</el-button>
+          </el-col>
+          
         </el-form>
       </el-collapse-item>
     </el-collapse>
