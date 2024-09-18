@@ -106,8 +106,8 @@ export default {
     this.fetchSelectedData();
     if (this.selectedData.length > 0) {
       this.fetchImageUrl(this.selectedData[0].image_file); // 加载第一个图像
-      this.fetchImageUrl1(this.selectedData[0].swc_auto14);
-      this.fetchImageUrl2(this.selectedData[0].image_file, this.selectedData[0].swc_auto14); // 使用默认的 SWC URL,swcUrl是最终用到的展示路径
+      this.fetchImageUrl1(this.selectedData[0].swc_auto14,this.selectedData[0].image_file,this.selectedData[0].cell_id);
+      this.fetchImageUrl2(this.selectedData[0].image_file, this.selectedData[0].swc_auto14,this.selectedData[0].cell_id); // 使用默认的 SWC URL,swcUrl是最终用到的展示路径
     }
   },
   methods: {
@@ -118,8 +118,8 @@ export default {
         if (this.selectedVersion === 'v0')
         {
           if(this.currentItem.swc_auto14)
-              {this.fetchImageUrl1(this.currentItem.swc_auto14);
-               this.fetchImageUrl2(this.currentItem.image_file, this.currentItem.swc_auto14);} // 使用默认的 SWC URL,swcUrl是最终用到的展示路径
+              {this.fetchImageUrl1(this.currentItem.swc_auto14,this.currentItem.image_file,this.currentItem.cell_id);
+               this.fetchImageUrl2(this.currentItem.image_file, this.currentItem.swc_auto14,this.currentItem.cell_id);} // 使用默认的 SWC URL,swcUrl是最终用到的展示路径
           else
               {this.swcUrl = '';
                this.mip_swc_url = '';}
@@ -127,8 +127,8 @@ export default {
         else if (this.selectedVersion === 'v1')
         {
           if(this.currentItem.swc_v1)
-               {this.fetchImageUrl1(this.currentItem.swc_v1);
-               this.fetchImageUrl2(this.currentItem.image_file, this.currentItem.swc_v1);} // 使用默认的 SWC URL,swcUrl是最终用到的展示路径
+               {this.fetchImageUrl1(this.currentItem.swc_v1,this.currentItem.image_file,this.currentItem.cell_id);
+               this.fetchImageUrl2(this.currentItem.image_file, this.currentItem.swc_v1,this.currentItem.cell_id);} // 使用默认的 SWC URL,swcUrl是最终用到的展示路径
           else
               {this.swcUrl='';
                this.mip_swc_url = '';}
@@ -137,8 +137,8 @@ export default {
          else if (this.selectedVersion === 'v2')
         {
           if(this.currentItem.swc_v2)
-              {this.fetchImageUrl1(this.currentItem.swc_v2);
-               this.fetchImageUrl2(this.currentItem.image_file, this.currentItem.swc_v2);} // 使用默认的 SWC URL,swcUrl是最终用到的展示路径
+              {this.fetchImageUrl1(this.currentItem.swc_v2,this.currentItem.image_file,this.currentItem.cell_id);
+               this.fetchImageUrl2(this.currentItem.image_file, this.currentItem.swc_v2,this.currentItem.cell_id);} // 使用默认的 SWC URL,swcUrl是最终用到的展示路径
           else
               {this.swcUrl='';
                this.mip_swc_url = '';}
@@ -163,7 +163,7 @@ export default {
         this.imageUrl = '';
       }
     },
-    async fetchImageUrl1(ss) {
+    async fetchImageUrl1(ss,mipforswc,cellid) {
       if(!ss){
           this.$message.error('No SWC file');
           this.swcUrl = '';
@@ -172,7 +172,9 @@ export default {
       }
       try {
        const response = await axios.post('/api/getSWC/', {
-                    ss:ss  // 将文件夹路径发送到后端
+                    ss:ss,  // 将文件夹路径发送到后端
+                    mipforswc:mipforswc,
+                    cellid:cellid
                   }, {
                      responseType: 'blob' // 这里设置为 blob
                    });
@@ -184,7 +186,7 @@ export default {
         this.swcUrl = '';
       }
     },
-    async fetchImageUrl2(imageFile, swcFile) { //获取MIP和SWC图像叠加图的
+    async fetchImageUrl2(imageFile, swcFile,cellid) { //获取MIP和SWC图像叠加图的
       if(!imageFile || !swcFile)
       {
             this.mip_swc_url= '';
@@ -193,7 +195,8 @@ export default {
       try {
         const response = await axios.post('/api/getMIPSWC/', {
           image_file: imageFile,  // 将image_file发送到后端
-          swc_file: swcFile       // 将swc_file发送到后端
+          swc_file: swcFile,       // 将swc_file发送到后端
+          cellid:cellid
         }, {
           responseType: 'blob' // 这里设置为 blob
         });
@@ -212,8 +215,8 @@ export default {
         this.selectedVersion='v0';
         this.currentImage = 'both';
         this.fetchImageUrl(this.currentItem.image_file); // 加载当前项的图像
-        this.fetchImageUrl1(this.currentItem.swc_auto14);
-        this.fetchImageUrl2(this.currentItem.image_file, this.currentItem.swc_auto14); // 使用默认的 SWC URL,swcUrl是最终用到的展示路径
+        this.fetchImageUrl1(this.currentItem.swc_auto14,this.currentItem.image_file,this.currentItem.cell_id);
+        this.fetchImageUrl2(this.currentItem.image_file, this.currentItem.swc_auto14,this.currentItem.cell_id); // 使用默认的 SWC URL,swcUrl是最终用到的展示路径
 
       }
     },
@@ -223,8 +226,8 @@ export default {
         this.selectedVersion='v0';
         this.currentImage = 'both';
         this.fetchImageUrl(this.currentItem.image_file); // 加载当前项的图像
-        this.fetchImageUrl1(this.currentItem.swc_auto14);
-        this.fetchImageUrl2(this.currentItem.image_file, this.currentItem.swc_auto14); // 使用默认的 SWC URL,swcUrl是最终用到的展示路径
+        this.fetchImageUrl1(this.currentItem.swc_auto14,this.currentItem.image_file,this.currentItem.cell_id);
+        this.fetchImageUrl2(this.currentItem.image_file, this.currentItem.swc_auto14,this.currentItem.cell_id); // 使用默认的 SWC URL,swcUrl是最终用到的展示路径
 
       }
     }
