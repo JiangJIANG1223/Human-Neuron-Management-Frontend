@@ -713,10 +713,10 @@ export default {
 
         // 先获取 URL
         Promise.all([
-            this.getImageUrl2(row.image_file, row.swc_auto14).then(url => {
+            this.getImageUrl2(row.image_file, row.swc_auto14,row.cell_id).then(url => {
                 this.mip_swc_url = url;
             }),
-            this.getImageUrl1(row.swc_auto14).then(url => {
+            this.getImageUrl1(row.swc_auto14,row.image_file,row.cell_id).then(url => {
                 this.swcUrl = url;
             })
         ]).catch(error => {
@@ -742,7 +742,7 @@ export default {
         return '';
       }
     },
-    async getImageUrl1(ss) {  //获取SWC图像的,ss是传入的不同版本的swc文件地址
+    async getImageUrl1(ss,mipforswc,cellid) {  //获取SWC图像的,ss是传入的不同版本的swc文件地址
 
     if(!ss){
         this.$message.error('No SWC file');
@@ -752,7 +752,9 @@ export default {
 
       try {
        const response = await axios.post('/api/getSWC/', {
-                   ss:ss  // 将文件夹路径发送到后端
+                   ss:ss,  // 将文件夹路径发送到后端
+                   mipforswc:mipforswc,
+                   cellid:cellid
                   }, {
                      responseType: 'blob' // 这里设置为 blob
                    });
@@ -764,7 +766,7 @@ export default {
         return '';
       }
     },
-    async getImageUrl2(imageFile, swcFile) { //获取MIP和SWC图像叠加图的
+    async getImageUrl2(imageFile, swcFile,cellid) { //获取MIP和SWC图像叠加图的
       if(!imageFile || !swcFile)
       {
             return '';
@@ -773,7 +775,9 @@ export default {
       try {
         const response = await axios.post('/api/getMIPSWC/', {
           image_file: imageFile,  // 将image_file发送到后端
-          swc_file: swcFile       // 将swc_auto14发送到后端
+          swc_file: swcFile,      // 将swc_auto14发送到后端
+          cellid:cellid
+
         }, {
           responseType: 'blob' //
         });
@@ -793,23 +797,23 @@ export default {
       }
 
       if (this.viewForm.swc_auto14) {
-            this.swcUrlv0 = await this.getImageUrl1(this.viewForm.swc_auto14);
+            this.swcUrlv0 = await this.getImageUrl1(this.viewForm.swc_auto14,this.viewForm.image_file,this.viewForm.cell_id);
       }
       if (this.viewForm.swc_v1) {
-            this.swcUrlv1 = await this.getImageUrl1(this.viewForm.swc_v1);
+            this.swcUrlv1 = await this.getImageUrl1(this.viewForm.swc_v1,this.viewForm.image_file,this.viewForm.cell_id);
       }
       if (this.viewForm.swc_v2) {
-            this.swcUrlv2 = await this.getImageUrl1(this.viewForm.swc_v2);
+            this.swcUrlv2 = await this.getImageUrl1(this.viewForm.swc_v2,this.viewForm.image_file,this.viewForm.cell_id);
       }
 
       if (this.viewForm.image_file && this.viewForm.swc_auto14) {
-            this.mip_swc_urlv0=await this.getImageUrl2(this.viewForm.image_file, this.viewForm.swc_auto14);
+            this.mip_swc_urlv0=await this.getImageUrl2(this.viewForm.image_file, this.viewForm.swc_auto14,this.viewForm.cell_id);
       }
       if (this.viewForm.image_file && this.viewForm.swc_v1) {
-            this.mip_swc_urlv1=await this.getImageUrl2(this.viewForm.image_file, this.viewForm.swc_v1);
+            this.mip_swc_urlv1=await this.getImageUrl2(this.viewForm.image_file, this.viewForm.swc_v1,this.viewForm.cell_id);
       }
       if (this.viewForm.image_file && this.viewForm.swc_v2) {
-            this.mip_swc_urlv2=await this.getImageUrl2(this.viewForm.image_file, this.viewForm.swc_v2);
+            this.mip_swc_urlv2=await this.getImageUrl2(this.viewForm.image_file, this.viewForm.swc_v2,this.viewForm.cell_id);
       }
 
     },
@@ -821,34 +825,34 @@ export default {
     async showFullSWC(imagePath) {    //展示不同版本SWC图像
     if(this.selectedVersion === 'v0')
      {
-          this.fullImageUrl = await this.getImageUrl1(imagePath.swc_auto14);
+          this.fullImageUrl = await this.getImageUrl1(imagePath.swc_auto14,this.viewForm.image_file,this.viewForm.cell_id);
           this.fullImageDialogVisible = true;
      }
      else if (this.selectedVersion === 'v1')
      {
-          this.fullImageUrl = await this.getImageUrl1(imagePath.swc_v1);
+          this.fullImageUrl = await this.getImageUrl1(imagePath.swc_v1,this.viewForm.image_file,this.viewForm.cell_id);
           this.fullImageDialogVisible = true;
      }
      else if (this.selectedVersion === 'v2')
      {
-          this.fullImageUrl = await this.getImageUrl1(imagePath.swc_v2);
+          this.fullImageUrl = await this.getImageUrl1(imagePath.swc_v2,this.viewForm.image_file,this.viewForm.cell_id);
           this.fullImageDialogVisible = true;
      }
     },
     async showFullBoth(imagePath,swcPath) {
         if(this.selectedVersion === 'v0')
          {
-              this.fullImageUrl = await this.getImageUrl2(imagePath,swcPath.swc_auto14);
+              this.fullImageUrl = await this.getImageUrl2(imagePath,swcPath.swc_auto14,this.viewForm.cell_id);
               this.fullImageDialogVisible = true;
          }
          else if (this.selectedVersion === 'v1')
          {
-              this.fullImageUrl = await this.getImageUrl2(imagePath,swcPath.swc_v1);
+              this.fullImageUrl = await this.getImageUrl2(imagePath,swcPath.swc_v1,this.viewForm.cell_id);
               this.fullImageDialogVisible = true;
          }
          else if (this.selectedVersion === 'v2')
          {
-              this.fullImageUrl = await this.getImageUrl2(imagePath,swcPath.swc_v2);
+              this.fullImageUrl = await this.getImageUrl2(imagePath,swcPath.swc_v2,this.viewForm.cell_id);
               this.fullImageDialogVisible = true;
          }
 
