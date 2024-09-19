@@ -1,6 +1,6 @@
 # human_neuron
 
-## Project setup
+## Project setup test
 ```
 npm install
 ```
