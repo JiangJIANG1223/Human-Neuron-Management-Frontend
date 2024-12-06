@@ -25,6 +25,9 @@ module.exports = defineConfig({
   },
 
   devServer: {
+
+    host: '0.0.0.0', // 允许任意IP访问  
+    port: 8080,  
     client: {
       overlay: false,
     },

@@ -15,26 +15,26 @@
             <div style="display: flex; align-items: center; justify-content: center;">
                 <div style="display: flex; flex-direction: column; align-items: center; margin: -15px;">
                     <img v-show="imageUrl" :src="imageUrl" alt="Image" class="image-preview"
-                         style="width: 77%;" @load="adjustImageSize">
+                         style="width: 60%;" @load="adjustImageSize">
                     <div class="image-label">MIP</div>
                 </div>
 
-                <!-- 下拉框代码 -->
-                <select v-model="selectedVersion" @change="updateSwcUrl" class="custom-select" style="position: absolute; bottom: -5px; right: 5px;">
-                    <option value="v0">Auto_1.4</option>
-                    <option value="v1">其它版本未上线1</option>
-                    <option value="v2">其它版本未上线2</option>
-                </select>
+                <div v-show="currentItem.swc_auto14 !== null" style="flex-direction: column; align-items: center; margin: -5px;">
+                    <select v-model="selectedVersion" @change="updateSwcUrl" class="custom-select" style="position: absolute; bottom: -5px; right: 5px;">
+                        <option value="v0">Auto_1.4</option>
+                        <option value="v1">其它版本未上线1</option>
+                        <option value="v2">其它版本未上线2</option>
+                    </select>
 
-                <div style="display: flex; flex-direction: column; align-items: center; margin: -5px;">
                     <img v-show="currentImage === 'both'" :src="mip_swc_url" alt="Both Image"
-                         style="width: 77%;" @load="adjustImageSize">
+                         style="width: 60%;" @load="adjustImageSize">
                     <img v-show="currentImage === 'swc'" :src="swcUrl" alt="SWC Image"
-                         style="width: 77%;" @load="adjustImageSize">
+                         style="width: 60%;" @load="adjustImageSize">
                     <div class="image-label">{{ currentImageLabel }}</div>
+
+                    <el-button type="primary" @click="toggleImage" style="position: absolute; bottom: 40px; right: 5px;">{{ buttonLabel }}</el-button>
                 </div>
 
-                <el-button type="primary" @click="toggleImage" style="position: absolute; bottom: 40px; right: 5px;">{{ buttonLabel }}</el-button>
             </div>
         </div>
 
@@ -104,10 +104,12 @@ export default {
   },
   created() {
     this.fetchSelectedData();
-    if (this.selectedData.length > 0) {
+    if (this.selectedData.length > 0 ) {
       this.fetchImageUrl(this.selectedData[0].image_file); // 加载第一个图像
-      this.fetchImageUrl1(this.selectedData[0].swc_auto14,this.selectedData[0].image_file,this.selectedData[0].cell_id);
-      this.fetchImageUrl2(this.selectedData[0].image_file, this.selectedData[0].swc_auto14,this.selectedData[0].cell_id); // 使用默认的 SWC URL,swcUrl是最终用到的展示路径
+       if(this.selectedData[0].swc_auto14){
+            this.fetchImageUrl1(this.selectedData[0].swc_auto14,this.selectedData[0].image_file,this.selectedData[0].cell_id);
+            this.fetchImageUrl2(this.selectedData[0].image_file, this.selectedData[0].swc_auto14,this.selectedData[0].cell_id);
+       }// 使用默认的 SWC URL,swcUrl是最终用到的展示路径
     }
   },
   methods: {
@@ -165,7 +167,7 @@ export default {
     },
     async fetchImageUrl1(ss,mipforswc,cellid) {
       if(!ss){
-          this.$message.error('No SWC file');
+          // this.$message.error('No SWC file');
           this.swcUrl = '';
           return '';
 
@@ -215,8 +217,9 @@ export default {
         this.selectedVersion='v0';
         this.currentImage = 'both';
         this.fetchImageUrl(this.currentItem.image_file); // 加载当前项的图像
+        if(this.currentItem.swc_auto14){
         this.fetchImageUrl1(this.currentItem.swc_auto14,this.currentItem.image_file,this.currentItem.cell_id);
-        this.fetchImageUrl2(this.currentItem.image_file, this.currentItem.swc_auto14,this.currentItem.cell_id); // 使用默认的 SWC URL,swcUrl是最终用到的展示路径
+        this.fetchImageUrl2(this.currentItem.image_file, this.currentItem.swc_auto14,this.currentItem.cell_id); }// 使用默认的 SWC URL,swcUrl是最终用到的展示路径
 
       }
     },
@@ -226,8 +229,9 @@ export default {
         this.selectedVersion='v0';
         this.currentImage = 'both';
         this.fetchImageUrl(this.currentItem.image_file); // 加载当前项的图像
+        if(this.currentItem.swc_auto14){
         this.fetchImageUrl1(this.currentItem.swc_auto14,this.currentItem.image_file,this.currentItem.cell_id);
-        this.fetchImageUrl2(this.currentItem.image_file, this.currentItem.swc_auto14,this.currentItem.cell_id); // 使用默认的 SWC URL,swcUrl是最终用到的展示路径
+        this.fetchImageUrl2(this.currentItem.image_file, this.currentItem.swc_auto14,this.currentItem.cell_id); }// 使用默认的 SWC URL,swcUrl是最终用到的展示路径
 
       }
     }

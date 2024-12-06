@@ -6,13 +6,16 @@
     <el-container>
       <SidebarMenu @menu-select="handleMenuSelect" />
       <el-main class="main-content">
-        <SearchBox @search="handleSearch" />
-        <router-view :key="$route.fullPath" :search-query="searchQuery" :is-guest="isGuest"></router-view> <!-- 渲染子路由 -->
+        <component
+          v-if="!isSampleInfo"
+          :is="currentSearchComponent"
+          @search="handleSearch"
+        />
+        <router-view :key="$route.fullPath" :search-query="searchQuery" :is-guest="isGuest"></router-view>
       </el-main>
     </el-container>
   </el-container>
 </template>
-
 
 <script>
 import HeaderBar from './HeaderBar.vue';
@@ -32,17 +35,25 @@ export default {
       isGuest: localStorage.getItem('is_guest') === 'true'
     };
   },
+  computed: {
+    currentSearchComponent() {
+      return 'SearchBox'; // 直接返回 SearchBox
+    },
+    isSampleInfo() {
+      return this.$route.name === 'SampleInfo'; // 判断当前路由是否为 SampleInfo
+    }
+  },
   methods: {
     handleMenuSelect(component) {
       this.$router.push({ name: component });
     },
     handleSearch(query) {
-      console.log('Search query:', query);
       this.searchQuery = query;
-      if (this.$route.name !== 'DataTable') {
+
+      // 只处理 SearchBox 的逻辑
+      if (this.currentSearchComponent === 'SearchBox') {
+        // 跳转到 DataTable
         this.$router.push({ name: 'DataTable' });
-      } else {
-        this.$forceUpdate(); // 强制更新组件，以确保搜索结果正确显示
       }
     }
   }
@@ -113,4 +124,3 @@ export default {
   color: #34495e;
 }
 </style>
-  

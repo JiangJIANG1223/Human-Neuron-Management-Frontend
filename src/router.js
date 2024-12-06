@@ -7,6 +7,7 @@ import DataExplorer from '@/components/DataExplorer.vue';
 import DataStatus from '@/components/DataStatus.vue';
 import SampleInfo from '@/components/SampleInfo.vue';
 
+
 const routes = [
   { path: '/login', name: 'Login', component: Login },
   { path: '/register', name: 'Register', component: Register },
@@ -36,9 +37,11 @@ const routes = [
         component: DataStatus
       },
       {
+
         path: 'sample',
         name: 'SampleInfo',
-        component: SampleInfo
+        component: SampleInfo,
+
       }
     ]
   },

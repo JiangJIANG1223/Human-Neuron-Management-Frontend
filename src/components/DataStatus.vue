@@ -42,7 +42,7 @@
           style="height: 780px;">
         </el-input>
         <div v-if="!isEditing">
-          <el-button type="primary" @click="startEditing">上传日报</el-button>
+          <el-button type="primary" @click="startEditing" :disabled="isGuest">上传日报</el-button>
         </div>
         <div v-else>
           <el-button type="primary" @click="saveReport">保存</el-button>
@@ -91,6 +91,12 @@ import { ElMessage } from 'element-plus';
 
 export default {
   name: 'DataStatus',
+  props: {
+    isGuest: {
+      type: Boolean,
+      default: false
+    }
+  },
   data() {
     return {
       stats: [

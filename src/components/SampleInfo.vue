@@ -1,5 +1,6 @@
 <template>
   <div>
+    <SearchSample @search="receiveData" />
     <div class="button-group">
       <el-button type="primary" @click="openAddDialog" :disabled="isGuest">Upload</el-button>
       <el-button @click="exportData" :disabled="isGuest">Export</el-button>
@@ -17,9 +18,17 @@
       <el-table-column prop="tissue_id" label="组织编号"></el-table-column>
       <el-table-column prop="patient_age" label="患者年龄"></el-table-column>
       <el-table-column prop="english_abbr_nj" label="英文简称(南京编)"></el-table-column>
-      <el-table-column label="操作" width="100">
+
+      <el-table-column prop="sample_snapshot" label="样本方位图"></el-table-column>
+      <el-table-column prop="sample_image" label="样本影像"></el-table-column>
+      <el-table-column prop="sample_annotation" label="样本3D标注"></el-table-column>
+
+      <el-table-column label="操作" width="180">
         <template v-slot="scope">
-          <el-button size="small" type="primary" @click="viewData(scope.row)">View</el-button>
+             <div class="action-buttons">
+                  <el-button size="small" type="primary" @click="viewData(scope.row)">View</el-button>
+                  <el-button size="small" @click="download_SampleFiles(scope.row)":loading="samplefile_downloadLoading">Download</el-button>
+            </div>
         </template>
       </el-table-column>
     </el-table>
@@ -33,6 +42,27 @@
 
     <!-- Dialog for viewing and editing data -->
     <el-dialog title="View Sample Info" v-model="viewDialogVisible" width="74%">
+
+    <div>
+        <el-button type="primary" @click="viewSampleSnapshot(this.viewForm)" style="margin-right: 10px;">
+            查看样本方位图
+        </el-button>
+        <el-dialog v-model="snapshot_dialogVisible" title="样本方位图">
+            <el-table :data="snapshot_imageFiles" style="width: 100%">
+                <el-table-column prop="name" label="File Name" width="180">
+                    <template v-slot="scope">
+                        <el-link type="primary" @click="showImage(scope.row.url, scope.row.name)">
+                            {{ scope.row.name }} <!-- 显示文件名 -->
+                        </el-link>
+                    </template>
+                </el-table-column>
+            </el-table>
+            <el-dialog :title="current_image_name" v-model="samplesnapshot_ImageVisible" width="50%">
+                <img v-if="current_samplesnapshot" :src="current_samplesnapshot" alt="Preview" style="width: 100%;">
+            </el-dialog>
+        </el-dialog>
+    </div>
+
       <el-form ref="viewFormRef" :model="viewForm" label-width="240px" class="custom-dialog-content">
         <div v-for="(section, sectionKey) in formSections" :key="sectionKey" class="form-section">
           <el-divider></el-divider>
@@ -48,6 +78,13 @@
       <div slot="footer" class="dialog-footer">
         <div class="left-buttons">
           <el-button v-if="isEdit" type="danger" @click="confirmDelete">删除</el-button>
+
+          <el-button type="primary" @click="select01Folder" style="margin-right: 10px;" :disabled = "isGuest" :loading="samplefile_uploadLoading">upload 样本方位图</el-button>
+          <input type="file" ref="fileInput01" webkitdirectory multiple @change="handle01Files" style="display: none;" />
+          <el-button type="primary" @click="select02Folder" style="margin-right: 10px;" :disabled = "isGuest" :loading="samplefile_uploadLoading">Upload 样本影像图</el-button>
+          <input type="file" ref="fileInput02" webkitdirectory multiple @change="handle02Files" style="display: none;" />
+          <el-button type="primary" @click="select03Folder" :disabled = "isGuest" :loading="samplefile_uploadLoading">Upload 样本3D标注</el-button>
+          <input type="file" ref="fileInput03" webkitdirectory multiple @change="handle03Files" style="display: none;" />
         </div>
         <div class="right-buttons">
           <el-button @click="viewDialogVisible = false">取消</el-button>
@@ -64,8 +101,8 @@
         <el-row :gutter="20" v-for="(section, sectionKey) in formSections" :key="sectionKey">
           <el-col :span="8" v-for="item in section.items" :key="item.prop">
             <el-form-item :label="item.label" class="custom-form-item">
-              <el-input 
-                v-model="form[item.prop]" 
+              <el-input
+                v-model="form[item.prop]"
                 :style="{ color: isDefaultValue[item.prop] ? 'gray' : 'black' }"
                 @input="handleInput(item.prop)"
               ></el-input>
@@ -73,6 +110,7 @@
           </el-col>
         </el-row>
       </el-form>
+
       <div slot="footer" class="dialog-footer">
         <el-button @click="addDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="submitForm">上传</el-button>
@@ -85,9 +123,14 @@
 import axios from '@/axios';
 import * as XLSX from 'xlsx';
 import { ElLoading } from 'element-plus';
+import SearchSample from './Search_for_Sample.vue';
+
 
 export default {
   name: 'SampleInfo',
+  components: {
+    SearchSample
+  },
   props: {
     isGuest: {
       type: Boolean,
@@ -96,6 +139,17 @@ export default {
   },
   data() {
     return {
+      snapshot_dialogVisible: false,
+      snapshot_imageFiles: [],
+      current_samplesnapshot: '',
+      samplesnapshot_ImageVisible: false,
+      samplefile_downloadLoading: false,
+      samplefile_uploadLoading: false,
+      current_image_name: '',  // 新增
+      searchQuery: {},
+
+
+
       sampleInfo: [],
       selectedSamples: [],
       selectAllPages: false,
@@ -204,11 +258,154 @@ export default {
   created() {
     this.fetchSampleInfo();
   },
+  watch: {
+     searchQuery(newVal) {
+        if (newVal) {
+          this.fetchSampleInfo();
+        }
+     }
+  },
   methods: {
+    receiveData(data) {
+      // 接收来自子组件的数据
+      this.searchQuery = data;
+      // alert(`${this.searchQuery.inputString}`);
+      // alert(`${this.searchQuery.sample_hospital}`)
+    },
+    async viewSampleSnapshot(viewForm) {
+      this.snapshot_dialogVisible = true;
+      await this.getSampleSnapshot(viewForm);
+    },
+    async getSampleSnapshot(viewForm) {
+      // alert(`${viewForm.idx}`)
+      try {
+        const response = await axios.post('/api/view_sample_snapshots/', { idx: viewForm.idx });
+        this.snapshot_imageFiles = response.data.pics; // 直接使用包含名称和 URL 的对象
+      } catch (error) {
+        console.error('Error fetching sample snapshots:', error);
+        this.snapshot_imageFiles=[];
+        this.$message.error('未能获取样本方位图');
+      }
+    },
+    async showImage(imagefile, name) {
+      this.current_image_name = name; // 保存当前文件名
+      try {
+        const response = await axios.post('/api/get_sample_snapshot_url', { imagefile: imagefile },{ responseType: 'blob' });
+            // 检查响应是否是 Blob 类型
+        if (response.data && response.data instanceof Blob) {
+          this.current_samplesnapshot = URL.createObjectURL(response.data);
+          this.samplesnapshot_ImageVisible = true; // 打开图像查看对话框
+
+        } else {
+          throw new TypeError('Response data is not a Blob');
+        }
+          } catch (error) {
+            console.error('Error fetching image:', error);
+            this.$message.error('获取图像失败');
+            this.current_samplesnapshot ='';
+
+        }
+        this.samplesnapshot_ImageVisible = true; // 打开图像查看对话框
+    },
+    //****************************样本文件下载函数*******************************
+    async download_SampleFiles(row) {
+      this.samplefile_downloadLoading = true; // 启动加载动画
+      try {
+          // 使用 params 传递 row.idx，确保请求为 POST 请求
+          const response = await axios.post('/api/sample_download/', {
+          idx: row.idx
+        }, {
+          responseType: 'blob' // 获取 Blob 用于下载文件
+        });
+
+        // 创建下载链接
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${row.idx}_${row.sample_id}.zip`); // 设置下载文件名
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        // 下载成功的消息
+        this.$message.success('下载成功');
+      } catch (error) {
+        console.error('Download failed:', error);
+        // 下载失败的消息
+        this.$message.error('下载失败');
+      }
+        finally {
+        this.samplefile_downloadLoading = false; // 停止加载动画
+      }
+    },
+    //****************************样本文件上传函数*******************************
+    select01Folder() {
+      this.$refs.fileInput01.click();
+    },
+    async handle01Files(event) {
+      await this.uploadFiles(event, '/api/Upload_Sample_snapshot', 'fileInput01');
+    },
+    select02Folder() {
+      this.$refs.fileInput02.click();
+    },
+    async handle02Files(event) {
+      await this.uploadFiles(event, '/api/Upload_Sample_image', 'fileInput02');
+    },
+    select03Folder() {
+      this.$refs.fileInput03.click();
+    },
+    async handle03Files(event) {
+      await this.uploadFiles(event, '/api/Upload_Sample_annoation', 'fileInput03');
+    },
+
+    async uploadFiles(event, url, inputRef) {
+      this.samplefile_uploadLoading = true;
+      const sample_idx = this.viewForm.idx;
+      const files = event.target.files;
+      const formData = new FormData();
+      const folderName = files[0].webkitRelativePath.split('/')[0];
+      alert(`${folderName}`);
+
+      const BATCH_SIZE = 100; // 每次上传的文件数量
+
+      for (let i = 0; i < files.length; i += BATCH_SIZE) {
+        const batchFiles = Array.from(files).slice(i, i + BATCH_SIZE);
+        const batchFormData = new FormData();
+
+        for (let file of batchFiles) {
+          batchFormData.append('files', file, file.webkitRelativePath);
+        }
+
+        batchFormData.append('folderName', folderName);
+        batchFormData.append('sample_idx', sample_idx);
+
+        try {
+          const response = await axios.post(url, batchFormData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+
+          console.log('Upload successful:', response.data);
+          this.$message.success('上传成功');
+        } catch (error) {
+          console.error('Error uploading files:', error);
+          this.$message.error('上传失败');
+        }
+      }
+
+      // this.$message.success('上传成功');
+      // 重置 input 的值
+      this.$refs[inputRef].value = null;
+      this.samplefile_uploadLoading = false; // 停止加载动画
+    },
     fetchSampleInfo() {
+      // alert(`${this.searchQuery.patient_ID}`);
       const params = {
         skip: (this.currentPage - 1) * this.pageSize,
-        limit: this.pageSize
+        limit: this.pageSize,
+        sample_hospital: this.searchQuery.sample_hospital,
+        PID: this.searchQuery.patient_ID
       };
       axios.get('/api/sample_information/', {
         headers: {
@@ -252,7 +449,7 @@ export default {
       this.fetchSampleInfo();
     },
 
-    async handleSelectAllPages(value) {
+    async handleSelectAllPages(value) {  //export 在 line 542
       this.selectAllPages = value;
       if (value) {
         // 显示加载动画
@@ -286,14 +483,19 @@ export default {
     },
 
     fetchAllSampleInfo() {
+      const params = {
+        // skip: (this.currentPage - 1) * this.pageSize,
+        // limit: this.pageSize,
+        skip: 0,
+        limit: this.total,
+        sample_hospital: this.searchQuery.sample_hospital,
+        PID: this.searchQuery.patient_ID
+      };
       return axios.get('/api/sample_information/', {
         headers: {
           'Content-Type': 'application/json'
         },
-        params: {
-          limit: this.total,
-          skip: 0
-        }
+        params: params
       }).then(response => {
         return response.data.data;
       });

@@ -22,3 +22,5 @@ pnpm-debug.log*
 *.sln
 *.sw?
 /public
+src/axios.js
+src/axios.js

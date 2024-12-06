@@ -8,7 +8,9 @@
           <el-button @click="exploreSelected" >Explore</el-button>
         </div>
         <div class="right-buttons">
-          <el-button type="primary" @click="openRecordBookDialog">Record Book</el-button>
+          <el-button type="primary" @click="openInjectionFilesDialog" :disabled="isGuest">Injection Files</el-button>
+          <el-button type="primary" @click="openImagingInfoDialog" :disabled="isGuest">Imaging Info</el-button>
+          <el-button type="primary" @click="openRecordBookDialog" :disabled="isGuest">Record Book</el-button>
         </div>
       </div>
       <div class="select-all-container" style="display: flex; align-items: center; margin-top: 30px; margin-bottom: -8px; padding-left: 13px;">
@@ -30,7 +32,7 @@
           <template v-slot="scope">
             <div class="action-buttons">
               <el-button size="small" type="primary" @click="viewData(scope.row)">View</el-button>
-              <el-button size="small" @click="downloadV3DPBD(scope.row)" :loading="downloadLoading">Download</el-button>
+              <el-button size="small" @click="downloadV3DPBD(scope.row)" :loading="downloadLoading" :disabled="isGuest">Download</el-button>
             </div>
           </template>
         </el-table-column>
@@ -142,7 +144,7 @@
                     </div>
 
                     <!-- Initially show Both -->
-                    <div class="image-container" style="margin: 3px;">
+                    <div v-show="viewForm.swc_auto14 !== null" class="image-container" style="margin: 3px;">
                         <img v-show="currentImage === 'both'" :src="mip_swc_url" alt="Both Image" style="width: 70%;" class="image-preview" @dblclick="showFullBoth(viewForm.image_file, viewForm)"/>
                         <img v-show="currentImage === 'swc'" :src="swcUrl" alt="SWC Image" style="width: 70%;" class="image-preview" @dblclick="showFullSWC(viewForm)"/>
                         <div class="image-label">{{ currentImageLabel }}</div>
@@ -239,6 +241,162 @@
         <img width="100%" :src="previewImageUrl" alt="">
       </el-dialog>
     </el-dialog>
+
+    <!-- Injection Files Dialog -->
+    <el-dialog title="Injection Files" v-model="injectionFilesDialogVisible" width="50%">
+      <!-- 存储/下载/上传(入库) 功能选择 -->
+      <el-radio-group v-model="selectedTab">
+        <el-radio-button value="storage">01 Cache</el-radio-button>
+        <el-radio-button value="download">02 Inspect</el-radio-button>
+        <el-radio-button value="dbUpload">03 Import</el-radio-button>
+      </el-radio-group>
+
+      <!-- 存储部分 -->
+      <div v-if="selectedTab === 'storage'">
+        <el-form label-width="120px">
+          <el-form-item label="Subfolder Name" style="margin-top: 18px; margin-bottom: 15px;">
+            <el-input v-model="subfolderName" placeholder="Enter subfolder name, for example, P00001-T001-R001-S001"></el-input>
+          </el-form-item>
+
+          <el-upload
+            class="upload-demo"
+            drag
+            :multiple="true"
+            :file-list="filesList"
+            :before-upload="beforeUpload"
+            :on-change="handleFilesChange"
+            :on-remove="handleFilesRemove"
+            :auto-upload="false"  
+          >
+            <i class="el-icon-upload"></i>
+            <div class="el-upload__text">Drag files here or click to upload</div>
+            <div class="el-upload__tip" slot="tip">Please upload .csv file and two images.</div>
+          </el-upload>
+
+          <!-- 存储按钮 -->
+            <el-button type="primary" @click="uploadAllFiles" :disabled="filesList.length === 0">Upload Subfolder</el-button>
+        </el-form>
+      </div>
+      
+      <!-- 下载部分 -->
+      <div v-if="selectedTab === 'download'">
+        <!-- 确保 folderList 加载完成后再渲染 el-select -->
+        <el-select v-if="folderList.length > 0" v-model="selectedFolder" placeholder="Select folder" style="margin-top: 18px; margin-bottom: 15px;">
+          <el-option
+            v-for="folder in folderList"
+            :key="folder"
+            :label="folder"
+            :value="folder">
+          </el-option>
+        </el-select>
+          <el-button type="primary" @click="downloadFolder" :disabled="!selectedFolder">Download Subfolder</el-button>
+      </div>
+
+      <!-- 上传到数据库部分 -->
+      <div v-if="selectedTab === 'dbUpload'">
+        <el-form label-width="120px"  style="margin-top: 18px;">
+          <el-upload
+            class="upload-demo"
+            drag
+            :multiple="false"
+            :file-list="dbFilesList"
+            :before-upload="validateCSVFile"
+            :on-change="handleDBFilesChange"
+            :on-remove="handleDBFilesRemove"
+            :auto-upload="false"  
+          >
+            <i class="el-icon-upload"></i>
+            <div class="el-upload__text">Drag .csv file here or click to upload</div>
+          </el-upload>
+
+          <!-- 上传到数据库按钮 -->
+          <el-button type="primary" @click="uploadCSVToDB" :loading="uploadLoading" :disabled="dbFilesList.length === 0">Upload CSV to Database</el-button>
+        </el-form>
+      </div>
+
+      <div slot="footer" class="dialog-footer">
+        <el-button @click="injectionFilesDialogVisible = false">Cancel</el-button>
+      </div>
+    </el-dialog>
+
+    <!-- Imaging Info Dialog -->
+    <el-dialog title="Imaging Info" v-model="imagingInfoDialogVisible" width="50%">
+      <el-form label-width="150px">
+        <!-- Function Selection -->
+        <el-radio-group v-model="selectedImagingTab" style="margin-bottom: 20px;">
+          <el-radio-button value="metadataUpload">Metadata</el-radio-button>
+          <el-radio-button value="annotationUpload">Somas(APO)</el-radio-button>
+          <el-radio-button value="markerUpload">Markers</el-radio-button>
+        </el-radio-group>
+
+        <el-row :gutter="20">
+          <!-- Metadata File Upload -->
+          <el-col :span="24" v-if="selectedImagingTab === 'metadataUpload'">
+            <el-upload
+              class="upload-demo"
+              drag
+	            :multiple="true"
+              :file-list="metadataFilesList"
+              :before-upload="validateMetadataFile"
+              :on-change="handleMetadataFilesChange"
+              :on-remove="handleMetadataFilesRemove"
+              :auto-upload="false"
+            >
+              <i class="el-icon-upload"></i>
+              <div class="el-upload__text">Drag .xlsx or .xml file here or click to upload</div>
+            </el-upload>
+          </el-col>
+
+          <!-- Marker File Upload -->
+          <el-col :span="24" v-if="selectedImagingTab === 'markerUpload'">
+            <el-upload
+              class="upload-demo"
+              drag
+	            :multiple="true"
+              :file-list="markerFilesList"
+              :before-upload="validateMarkerFile"
+              :on-change="handleMarkerFilesChange"
+              :on-remove="handleMarkerFilesRemove"
+              :auto-upload="false"
+            >
+              <i class="el-icon-upload"></i>
+              <div class="el-upload__text">Drag .marker file here or click to upload</div>
+            </el-upload>
+          </el-col>
+
+          <!-- Annotation 文件上传 -->
+          <el-col :span="24" v-if="selectedImagingTab === 'annotationUpload'">
+            <el-upload
+              class="upload-demo"
+              drag
+              :multiple="true"
+              :file-list="annotationFilesList"
+              :before-upload="validateAnnotationFile"
+              :on-change="handleAnnotationFilesChange"
+              :on-remove="handleAnnotationFilesRemove"
+              :auto-upload="false"
+            >
+              <i class="el-icon-upload"></i>
+              <div class="el-upload__text">Drag .apo file here or click to upload</div>
+            </el-upload>
+          </el-col>
+        </el-row>
+
+        <!-- Upload Button -->
+        <div slot="footer" class="dialog-footer">
+          <el-button 
+            type="primary" 
+            @click="uploadImagingInfoFiles" 
+            :disabled="(selectedImagingTab === 'metadataUpload' && metadataFilesList.length === 0) || 
+                        (selectedImagingTab === 'markerUpload' && markerFilesList.length === 0) ||
+                        (selectedImagingTab === 'annotationUpload' && annotationFilesList.length === 0)">
+            Upload
+          </el-button>
+          <el-button @click="imagingInfoDialogVisible = false">Cancel</el-button>
+        </div>
+      </el-form>
+    </el-dialog> 
+
   </div>
 </template>
 
@@ -293,6 +451,7 @@ export default {
       swcUrl:'',   //展示SWC图像用
       mip_swc_url:'', //展示MIP—SWC图像用
       fullImageUrl: '',
+
       uploadLoading: false,
       downloadLoading: false,
       form: this.getEmptyForm(),
@@ -353,9 +512,13 @@ export default {
         shootingInfo:{
           title: '拍摄信息',
           items: [
+            { label: 'Image Device', prop: 'image_device' },
             { label: '激光波长(nm)', prop: 'laser_wavelength' },
             { label: '激光功率(mW)', prop: 'laser_power' }, 
             { label: '* 激光功率比例(%)', prop: 'laser_power_ratio' },  // 
+            { label: 'gain', prop: 'gain' },  
+            { label: 'scanner', prop: 'scanner' },  
+            { label: 'averaging', prop: 'averaging' }, 
             { label: '* PMT(V)', prop: 'pmt_voltage' },  // 
             { label: '* Z_size(张)', prop: 'z_size' },  // 
             { label: '* 平铺(0:否;1:是)', prop: 'tiling' },  //
@@ -394,7 +557,22 @@ export default {
       previewDialogVisible: false,
       previewImageUrl: '',
       fileList: [],
-      recordBookPics: []
+      recordBookPics: [],
+      
+      // 原始灌注文件相关
+      injectionFilesDialogVisible: false,
+      selectedTab: 'storage',  // 默认选择上传功能
+      subfolderName: '',  // 用户输入的子文件夹名称
+      folderList: [],  // 存储已有子文件夹列表，确保其初始值为一个空数组
+      selectedFolder: null,  // 选中的文件夹，初始化为 null
+      filesList: [],  // 存储上传的文件列表
+      dbFilesList: [],  // 存储用户选择的上传到数据库的文件
+
+      imagingInfoDialogVisible: false,
+      selectedImagingTab: 'metadataUpload',
+      metadataFilesList: [],
+      markerFilesList: [],
+      annotationFilesList: []
     };
   },
   watch: {
@@ -419,10 +597,10 @@ export default {
         currentImageLabel() {
             return this.currentImage === 'both' ? 'Both' : 'SWC';
         },
-
   },
   mounted() {
     this.fetchOptions();
+    this.updateSwcUrl(); // 初始化时更新不同版本 SWC URL
   },
   methods: {
   //**************************2D 图像上传拼接用***************************
@@ -537,6 +715,7 @@ export default {
           }
         },
      //**********************************单样本数据格式转换上传部分代码结束*************************************
+    
     fetchData() {
       let that = this
       const params = {
@@ -711,26 +890,28 @@ export default {
         this.selectedVersion = 'v0';
         this.currentImage = 'both';
 
-        // 先获取 URL
-        Promise.all([
-            this.getImageUrl2(row.image_file, row.swc_auto14,row.cell_id).then(url => {
-                this.mip_swc_url = url;
-            }),
-            this.getImageUrl1(row.swc_auto14,row.image_file,row.cell_id).then(url => {
-                this.swcUrl = url;
-            })
-        ]).catch(error => {
+      // 先获取 URL，只在 swc_auto14 不等于 None 时处理
+        const promises = [];
+
+        // 检查 swc_auto14 是否不等于 None，然后获取 URL
+        if (row.swc_auto14 !== null && row.swc_auto14 !== 'None') {
+            promises.push(
+                this.getImageUrl2(row.image_file, row.swc_auto14, row.cell_id).then(url => {
+                    this.mip_swc_url = url;
+                }),
+                this.getImageUrl1(row.swc_auto14, row.image_file, row.cell_id).then(url => {
+                    this.swcUrl = url;
+                })
+            );
+        }
+
+        Promise.all(promises).catch(error => {
             console.error('Error fetching images:', error);
         });
-
-
         this.isEdit = false;
         this.viewDialogVisible = true;
     },
 
-    // getImageUrl(imagePath) {
-    //   return `http://10.192.34.220:8000/api/image/${imagePath}`;
-    // },
     async getImageUrl(imagePath) {
       try {
         const response = await axios.get(`/api/image/${imagePath}`, { responseType: 'blob' });
@@ -745,7 +926,7 @@ export default {
     async getImageUrl1(ss,mipforswc,cellid) {  //获取SWC图像的,ss是传入的不同版本的swc文件地址
 
     if(!ss){
-        this.$message.error('No SWC file');
+        // this.$message.error('No SWC file');
         return '';
 
     }
@@ -987,10 +1168,6 @@ export default {
     },
     getEmptyForm() {
       return {
-        swc_v2:'',
-        swc_v1:'',
-        swc_auto14:'',
-        image_file: '',
         cell_id: '',
         patient_number: '',
         tissue_block_number: '',
@@ -1029,9 +1206,13 @@ export default {
         first_antibody_concentration: '',
         secondary_antibody_band: '',
         dapi_concentration: '',
+        image_device: '',
         laser_wavelength: '',
         laser_power: '',
         laser_power_ratio: '',
+        gain: '',
+        scanner: '',
+        averaging: '',
         pmt_voltage: '',
         z_size: '',
         tiling: '',
@@ -1049,7 +1230,17 @@ export default {
         inspection_staff: '',
         status_0: '',
         sealed_slide: '',
-        status_1: ''
+        status_1: '',
+        dye_solvent: '',
+        remarks: '',
+        image_file: '',
+        v3dpbd_file: '',
+        soma_x: '',
+        soma_y: '',
+        soma_z: '',
+        swc_auto14:'',
+        swc_v2:'',  //
+        swc_v1:'', //
       };
     },
 
@@ -1069,7 +1260,7 @@ export default {
       this.previewImageUrl = `${axios.defaults.baseURL}/Record_Book_Pics/${file.name}?v=${timestamp}`;
       this.previewDialogVisible = true;
     },
-    beforeUpload(file) {
+    beforeUploadPic(file) {
       const isJPG = file.type === 'image/jpeg';
       const isPNG = file.type === 'image/png';
       const isLt20M = file.size / 1024 / 1024 < 20;
@@ -1083,7 +1274,7 @@ export default {
       return (isJPG || isPNG) && isLt20M;
     },
     async uploadImage(file) {
-      const isValid = this.beforeUpload(file);
+      const isValid = this.beforeUploadPic(file);
       if (!isValid) return false;
 
       const formData = new FormData();
@@ -1111,11 +1302,335 @@ export default {
           console.error('Error fetching record book pics:', error);
           this.$message.error('Failed to fetch record book pics');
         });
+    },
+
+    openInjectionFilesDialog() {
+      this.injectionFilesDialogVisible = true;
+      this.loadFolders();  // 加载已有子文件夹
+    },
+    beforeUpload(file) {
+      // 获取文件的扩展名
+      const fileExtension = file.name.split('.').pop().toLowerCase();
+
+      // 判断文件是否为 CSV 或图片
+      const isCSVOrImage = fileExtension === 'csv' || file.type.startsWith('image/');
+
+      if (!isCSVOrImage) {
+        this.$message.error('Only CSV and image file are allowed.');
+        return false;
+      }
+      return true;
+    },
+
+    // 文件变更处理
+    handleFilesChange(file, filesList) {
+      this.filesList = filesList;  // 更新文件列表
+    },
+    handleFilesRemove(file, filesList) {
+      this.filesList = filesList;  // 更新文件列表
+    },
+    // 检查subfolderName格式是否符合规范
+    validateSubfolderName() {
+      const pattern = /^P\d{5}-T\d{3}-R\d{3}-S\d{3}(-B\d)?$/;
+      return pattern.test(this.subfolderName);
+    },
+
+    // 批量上传文件
+    uploadAllFiles() {
+      if (!this.subfolderName) {
+        this.$message.error('Please enter a subfolder name. Expected format: P00001-T001-R001-S001(-B1)');
+        return;
+      }
+
+      // 检查subfolderName格式
+      if (!this.validateSubfolderName()) {
+        this.$message.error('Please check the subfolder name.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('subfolder_name', this.subfolderName);  // 用户输入的子文件夹名称
+
+      this.filesList.forEach(file => {
+        formData.append('files', file.raw);  // 将每个文件添加到 formData 中
+      });
+
+      axios.post('/api/upload_files', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      .then((response) => {
+        this.$message.success('Files stored successfully.');
+        this.filesList = [];  // 清空文件列表
+        this.subfolderName = '';    // 清空 subfolderName
+      })
+      .catch((error) => {
+        this.$message.error('Failed to store files. Please try again.');
+      });
+    },
+
+    // 加载已有子文件夹
+    loadFolders() {
+      axios.get('/api/folders').then(response => {
+        this.folderList = response.data.folders;
+        if (this.folderList.length > 0) {
+          this.selectedFolder = this.folderList[0];  // 设置默认选中的文件夹
+        }
+      });
+    },
+    // 下载文件夹
+    downloadFolder() {
+      if (!this.selectedFolder) {
+        this.$message.error('Please select a folder.');
+        return;
+      }
+      // 请求下载文件夹，设置 responseType 为 'blob'
+      axios.get(`/api/download_folder?folder=${this.selectedFolder}`, {
+        responseType: 'blob'  // 必须设置 responseType 为 'blob' 来接收二进制数据
+      })
+      .then(response => {
+        // 创建 Blob 对象
+        const blob = new Blob([response.data], { type: 'application/zip' });
+
+        // 创建一个 URL，用于下载文件
+        const downloadUrl = window.URL.createObjectURL(blob);
+
+        // 创建一个临时链接并点击，触发下载
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.setAttribute('download', `${this.selectedFolder}.zip`); // 设置下载文件名
+        document.body.appendChild(link);
+        link.click();
+
+        // 清理操作
+        window.URL.revokeObjectURL(downloadUrl);
+        document.body.removeChild(link);
+
+        this.$message.success('Folder downloaded successfully');
+      })
+      .catch(error => {
+        this.$message.error('Failed to download folder');
+      });
+    },
+
+    validateCSVFile(file) {
+      const fileExtension = file.name.split('.').pop().toLowerCase();
+      const fileNamePattern = /^P\d{5}-T\d{3}-R\d{3}-S\d{3}(-B\d+)?\.csv$/;
+
+      if (fileExtension !== 'csv') {
+        this.$message.error('Only CSV files are allowed for database upload.');
+        return false;
+      }
+
+      if (!fileNamePattern.test(file.name)) {
+        this.$message.error('Invalid file name format. Expected format: P00001-T001-R001-S001(-B1).csv');
+        return false;
+      }
+      return true;
+    },
+    handleDBFilesChange(file, fileList) {
+      this.dbFilesList = fileList.slice(0, 1); // 只允许一个文件
+    },
+    handleDBFilesRemove(file, fileList) {
+      this.dbFilesList = fileList;
+    },
+    async uploadCSVToDB() {
+      this.uploadLoading = true;
+      if (this.dbFilesList.length === 0) {
+        this.$message.error('Please select a CSV file.');
+        return;
+      }
+
+      const file = this.dbFilesList[0].raw;
+      if (!this.validateCSVFile(file)) {
+        this.uploadLoading = false;
+        return;
+      }
+
+      // 检查文件是否已经存在
+      const checkFileExistsResponse = await axios.get(`/api/check_csv_exists?filename=${file.name}`);
+      if (checkFileExistsResponse.data.exists) {
+        this.uploadLoading = false;
+        this.$message.error('File with the same name already exists. Upload aborted!');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      axios.post('/api/upload_csv_to_db', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      .then(() => {
+        this.uploadLoading = false;
+        this.$message.success('CSV uploaded to database successfully');
+        this.dbFilesList = [];
+      })
+      .catch(error => {
+        this.uploadLoading = false;
+        if (error.response && error.response.data.detail) {
+          const errorMessage = error.response.data.detail;
+          if (errorMessage.includes('CSV file must contain an ID column.')) {
+            this.$message.error('File must contain an ID column. Please check and re-upload.');
+          } else if (errorMessage.includes('File name does not match its ID column')) {
+            this.$message.error('File name and its ID column do not match. Please check and re-upload.');
+          } else if (errorMessage.includes('Missing columns:')) {
+            this.$message.error(`Missing columns: ${errorMessage.split('Missing columns: ')[1]}`);
+          } else if (errorMessage.includes('Columns with missing values:')) {
+            this.$message.error(`Columns with missing values: ${errorMessage.split('Columns with missing values: ')[1]}`);
+          } else if (errorMessage.includes('No matching sample found')) {
+            this.$message.error('No matching sample found. Please check and re-upload.');
+          } else if (errorMessage.includes('Abnormal value in dye_name column.')) {
+            this.$message.error('Abnormal value in dye_name column. Please check and re-upload.');
+          } else if (errorMessage.includes('Concentration contents error.')) {
+            this.$message.error('Concentration contents error. Please check and re-upload.');
+          } else if (errorMessage.includes('Unable to convert date format.')) {
+            this.$message.error('Unable to convert date format. Please check and re-upload.');
+          // } else if (errorMessage.includes('Database insertion failed')) {
+          //   this.$message.error('Table format error. Please check and re-upload.');
+          } else if (errorMessage.includes('Database insertion failed:')) {
+            this.$message.error(`Database insertion failed. ${errorMessage.split('Database insertion failed:')[1]}`);
+          } else if (errorMessage.includes('Error processing CSV file:')) {
+            this.$message.error(`Error processing CSV file. ${errorMessage.split('Error processing CSV file:')[1]}`);
+          } else {
+            this.$message.error(errorMessage);
+          }
+        } else {
+          this.$message.error('CSV upload to database failed.');
+        }
+      });
+    },
+
+    openImagingInfoDialog() {
+      this.imagingInfoDialogVisible = true;
+    },
+    validateMetadataFile(file) {
+      const fileExtension = file.name.split('.').pop().toLowerCase();
+      const fileNamePattern = /^P\d{5}-T\d{3}-R\d{3}-S\d{3}(-B\d)?(-\d+)?-[A-Z]{2,3}\.(xlsx|xml)$/;
+      
+      if (!fileNamePattern.test(file.name)) {
+        this.$message.error('Invalid filename format for metadata file. Expected format: P00001-T001-R001-S001(-B1)(-1)-NAME.xlsx or .xml');
+        return false;
+      }
+
+      if (!['xlsx', 'xml'].includes(fileExtension)) {
+        this.$message.error('Only .xlsx or .xml files are allowed for metadata upload.');
+        return false;
+      }
+      return true;
+    },
+    validateMarkerFile(file) {
+      const fileExtension = file.name.split('.').pop().toLowerCase();
+      const fileNamePattern = /^P\d{5}-T\d{3}-R\d{3}-S\d{3}(-B\d)?(-\d+)?\.marker$/;
+
+      if (!fileNamePattern.test(file.name)) {
+        this.$message.error('Invalid filename format for marker file. Expected format: P00001-T001-R001-S001(-B1)(-1).marker');
+        return false;
+      }
+
+      if (fileExtension !== 'marker') {
+        this.$message.error('Only .marker files are allowed for marker upload.');
+        return false;
+      }
+      return true;
+    },
+    validateAnnotationFile(file) {
+      const fileExtension = file.name.split('.').pop().toLowerCase();
+      const fileNamePattern = /^P\d{5}-T\d{3}-R\d{3}-S\d{3}(-B\d)?(-\d+)?\.apo$/;
+
+      if (!fileNamePattern.test(file.name)) {
+        this.$message.error('Invalid filename format for annotation file. Expected format: P00001-T001-R001-S001(-B1)(-1).apo');
+        return false;
+      }
+
+      if (fileExtension !== 'apo') {
+        this.$message.error('Only .apo files are allowed for annotation upload.');
+        return false;
+      }
+      return true;
+    },
+
+    handleMetadataFilesChange(file, fileList) {
+      this.metadataFilesList = fileList;
+    },
+    handleMetadataFilesRemove(file, fileList) {
+      this.metadataFilesList = fileList;
+    },
+    handleMarkerFilesChange(file, fileList) {
+      this.markerFilesList = fileList;
+    },
+    handleMarkerFilesRemove(file, fileList) {
+      this.markerFilesList = fileList;
+    },
+    handleAnnotationFilesChange(file, fileList) {
+      this.annotationFilesList = fileList;
+    },
+    handleAnnotationFilesRemove(file, fileList) {
+      this.annotationFilesList = fileList;
+    },
+
+    uploadImagingInfoFiles() {
+      const formData = new FormData();
+
+      if (this.selectedImagingTab === 'metadataUpload') {
+        this.metadataFilesList.forEach(file => {
+          formData.append('metadata_files', file.raw);
+        });
+      } else if (this.selectedImagingTab === 'markerUpload') {
+        this.markerFilesList.forEach(file => {
+          formData.append('marker_files', file.raw);
+        });
+      } else if (this.selectedImagingTab === 'annotationUpload') {
+        this.annotationFilesList.forEach(file => {
+          formData.append('annotation_files', file.raw);
+        });
+      }
+
+      axios.post('/api/upload_imaging_info', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      .then(response => {
+        // Handle success
+        this.$message.success('Files uploaded successfully');
+        const uploadedFiles = response.data.uploaded_files || [];
+        // Remove uploaded files from the file list
+        if (this.selectedImagingTab === 'metadataUpload') {
+          this.metadataFilesList = this.metadataFilesList.filter(file => !uploadedFiles.includes(file.name));
+        } else if (this.selectedImagingTab === 'markerUpload') {
+          this.markerFilesList = this.markerFilesList.filter(file => !uploadedFiles.includes(file.name));
+        } else if (this.selectedImagingTab === 'annotationUpload') {
+          this.annotationFilesList = this.annotationFilesList.filter(
+            file => !uploadedFiles.includes(file.name)
+          );
+      }
+      })
+      .catch(error => {
+        let errorMessage = 'Files upload failed';
+        let uploadedFiles = [];
+        if (error.response && error.response.data.detail) {
+          if (typeof error.response.data.detail === 'string') {
+            errorMessage = error.response.data.detail;
+          } else if (typeof error.response.data.detail === 'object') {
+            errorMessage = error.response.data.detail.error || 'Files upload failed';
+            uploadedFiles = error.response.data.detail.uploaded_files || [];
+          }
+        }
+        this.$message.error(errorMessage);
+
+        // Remove uploaded files from the file list
+        if (this.selectedImagingTab === 'metadataUpload') {
+          this.metadataFilesList = this.metadataFilesList.filter(file => !uploadedFiles.includes(file.name));
+        } else if (this.selectedImagingTab === 'markerUpload') {
+          this.markerFilesList = this.markerFilesList.filter(file => !uploadedFiles.includes(file.name));
+        } else if (this.selectedImagingTab === 'annotationUpload') {
+          this.annotationFilesList = this.annotationFilesList.filter(
+            file => !uploadedFiles.includes(file.name)
+          );
+        }
+      });
     }
   },
-    mounted() {
-        this.updateSwcUrl(); // 初始化时更新不同版本 SWC URL
-      }
 };
 </script>
 
