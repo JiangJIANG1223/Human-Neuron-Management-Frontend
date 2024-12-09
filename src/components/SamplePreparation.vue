@@ -130,109 +130,109 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+// import { ref } from 'vue'
 
-const searchParams = ref({
-  sampleId: '',
-  colorChannel: '',
-  needleNumber: '',
-  operator: '',
-  sliceStatus: ''
-})
+// const searchParams = ref({
+//   sampleId: '',
+//   colorChannel: '',
+//   needleNumber: '',
+//   operator: '',
+//   sliceStatus: ''
+// })
+//
+// const tableData = ref([
+//   {
+//     sampleId: 'P00001',
+//     tissueId: 'T001',
+//     rollId: 'R001',
+//     sliceId: 'S001',
+//     blockId: 'B1',
+//     channels: 2,
+//     needles: 4,
+//     status: 'imaged'
+//   }
+// ])
+//
+// const showImagingDialog = ref(false)
+// const imagingRecords = ref([
+//   {
+//     id: 1,
+//     producer: 'xxx',
+//     status: 'imaged'
+//   }
+// ])
 
-const tableData = ref([
-  {
-    sampleId: 'P00001',
-    tissueId: 'T001',
-    rollId: 'R001',
-    sliceId: 'S001',
-    blockId: 'B1',
-    channels: 2,
-    needles: 4,
-    status: 'imaged'
-  }
-])
-
-const showImagingDialog = ref(false)
-const imagingRecords = ref([
-  {
-    id: 1,
-    producer: 'xxx',
-    status: 'imaged'
-  }
-])
-
-function onSearch() {
-  // 执行搜索逻辑，根据 searchParams 获取数据
-  console.log('Searching with params:', searchParams.value)
-}
-
-function newInjection() {
-  // 新建injection记录逻辑
-  console.log('New Injection')
-}
-
-function viewEditInjection(row) {
-  // 查看或编辑 injection 记录
-  console.log('View/Edit injection record:', row)
-}
-
-function uploadInjection(row) {
-  console.log('Upload injection files for:', row)
-}
-
-function downloadInjection(row) {
-  console.log('Download injection files for:', row)
-}
-
-function showBrightField(row) {
-  console.log('Show bright field data for:', row)
-}
-
-function openImagingDialog(row) {
-  console.log('Open imaging dialog for:', row)
-  showImagingDialog.value = true
-}
-
-function closeImagingDialog() {
-  showImagingDialog.value = false
-}
-
-function newImagingRecord() {
-  console.log('New imaging record')
-}
-
-function viewEditDownload(img) {
-  console.log('View/Edit/Download imaging:', img)
-}
-
-function imageMIP(img) {
-  console.log('Image MIP:', img)
-}
-
-function showImagingData(img) {
-  console.log('Show imaging data:', img)
-}
-
-function showMetadata(img) {
-  console.log('Show metadata:', img)
-}
-
-function showSomas(img) {
-  console.log('Show Somas (APO):', img)
-}
-
-function showInjectionMatchedTable(img) {
-  console.log('Show injection matched table:', img)
-}
-
-function toCell(img) {
-  console.log('To cell action:', img)
-}
-
-function deleteRecord() {
-  console.log('Delete imaging record')
-}
+// function onSearch() {
+//   // 执行搜索逻辑，根据 searchParams 获取数据
+//   console.log('Searching with params:', searchParams.value)
+// }
+//
+// function newInjection() {
+//   // 新建injection记录逻辑
+//   console.log('New Injection')
+// }
+//
+// function viewEditInjection(row) {
+//   // 查看或编辑 injection 记录
+//   console.log('View/Edit injection record:', row)
+// }
+//
+// function uploadInjection(row) {
+//   console.log('Upload injection files for:', row)
+// }
+//
+// function downloadInjection(row) {
+//   console.log('Download injection files for:', row)
+// }
+//
+// function showBrightField(row) {
+//   console.log('Show bright field data for:', row)
+// }
+//
+// function openImagingDialog(row) {
+//   console.log('Open imaging dialog for:', row)
+//   showImagingDialog.value = true
+// }
+//
+// function closeImagingDialog() {
+//   showImagingDialog.value = false
+// }
+//
+// function newImagingRecord() {
+//   console.log('New imaging record')
+// }
+//
+// function viewEditDownload(img) {
+//   console.log('View/Edit/Download imaging:', img)
+// }
+//
+// function imageMIP(img) {
+//   console.log('Image MIP:', img)
+// }
+//
+// function showImagingData(img) {
+//   console.log('Show imaging data:', img)
+// }
+//
+// function showMetadata(img) {
+//   console.log('Show metadata:', img)
+// }
+//
+// function showSomas(img) {
+//   console.log('Show Somas (APO):', img)
+// }
+//
+// function showInjectionMatchedTable(img) {
+//   console.log('Show injection matched table:', img)
+// }
+//
+// function toCell(img) {
+//   console.log('To cell action:', img)
+// }
+//
+// function deleteRecord() {
+//   console.log('Delete imaging record')
+// }
 </script>
 
 <style scoped>
