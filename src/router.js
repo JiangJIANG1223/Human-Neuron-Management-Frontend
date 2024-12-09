@@ -6,6 +6,7 @@ import DataTable from '@/components/DataTable.vue';
 import DataExplorer from '@/components/DataExplorer.vue';
 import DataStatus from '@/components/DataStatus.vue';
 import SampleInfo from '@/components/SampleInfo.vue';
+import SamplePreparation from '@/components/SamplePreparation.vue';
 
 
 const routes = [
@@ -35,6 +36,11 @@ const routes = [
         path: 'status',
         name: 'DataStatus',
         component: DataStatus
+      },
+      {
+        path: 'preparation',
+        name: 'SamplePreparation',
+        component: SamplePreparation
       },
       {
 
