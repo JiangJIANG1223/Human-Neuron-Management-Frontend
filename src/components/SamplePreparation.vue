@@ -377,9 +377,9 @@ function handleGlobalInspect() {
   ElMessage.info('Global inspect action.')
 }
 
-function handleGlobalUpload() {
-  ElMessage.info('Global upload action.')
-}
+// function handleGlobalUpload() {
+//   ElMessage.info('Global upload action.')
+// }
 
 // Perfusion和Bright field相关
 function uploadPerfusion(row) {
