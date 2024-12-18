@@ -2,7 +2,7 @@ import axios from 'axios';
 import router from './router'; // 确保导入路由
 
 const instance = axios.create({
-  baseURL: 'http://10.192.3.231:8000',
+  baseURL: 'http://10.194.35.182:8000',
   timeout: 500000,
   headers: { 'Content-Type': 'application/json' }
 });
