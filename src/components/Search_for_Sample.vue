@@ -8,7 +8,7 @@
         <el-form ref="searchForm" :model="searchQuery" label-width="150px" class="custom-box-content">
           <el-row :gutter="20">
             <el-col :span="6">
-              <el-form-item label="样本医院检索">
+              <el-form-item label="Search_for_Sample.vue样本医院检索">
                 <el-select v-model="searchQuery.sample_hospital" placeholder="Chose Sample Source">
                   <el-option v-if="searchQuery.sample_hospital.length > 0" label="None" value="none"></el-option>
                   <el-option v-for="option in sample_hospitalOptions" :key="option" :label="option" :value="option"></el-option>

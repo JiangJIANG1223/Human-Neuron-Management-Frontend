@@ -7,7 +7,7 @@
       <SidebarMenu @menu-select="handleMenuSelect" />
       <el-main class="main-content">
         <component
-          v-if="!isSampleInfo"
+          v-if="!isSampleInfo & !isSamplePreparation"
           :is="currentSearchComponent"
           @search="handleSearch"
         />
@@ -41,6 +41,9 @@ export default {
     },
     isSampleInfo() {
       return this.$route.name === 'SampleInfo'; // 判断当前路由是否为 SampleInfo
+    },
+    isSamplePreparation() {
+      return this.$route.name === 'SamplePreparation';
     }
   },
   methods: {
