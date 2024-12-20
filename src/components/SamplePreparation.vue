@@ -57,49 +57,114 @@
       </tr>
       </tbody>
     </table>
-
-    <!-- 编辑/新建 数据的Dialog -->
     <el-dialog v-model="editDialogVisible" title="View / Edit Sample" width="600px">
       <el-form :model="editForm" label-width="120px">
+        <!-- Sample ID（只读） -->
         <el-form-item label="Sample ID">
-          <el-input v-model="editForm.sampleId"></el-input>
+          <el-input v-model="editForm.sampleId" disabled></el-input>
         </el-form-item>
+        <!-- Tissue ID（只读） -->
         <el-form-item label="Tissue ID">
-          <el-input v-model="editForm.tissueId"></el-input>
+          <el-input v-model="editForm.tissueId" disabled></el-input>
         </el-form-item>
+        <!-- Roll ID（只读） -->
         <el-form-item label="Roll ID">
-          <el-input v-model="editForm.rollId"></el-input>
+          <el-input v-model="editForm.rollId" disabled></el-input>
         </el-form-item>
+        <!-- Slice ID（只读） -->
         <el-form-item label="Slice ID">
-          <el-input v-model="editForm.sliceId"></el-input>
+          <el-input v-model="editForm.sliceId" disabled></el-input>
         </el-form-item>
+        <!-- Block ID（只读） -->
         <el-form-item label="Block ID">
-          <el-input v-model="editForm.blockId"></el-input>
+          <el-input v-model="editForm.blockId" disabled></el-input>
         </el-form-item>
+        <!-- Channels（可编辑） -->
         <el-form-item label="Channels">
           <el-input v-model="editForm.channels" type="number"></el-input>
         </el-form-item>
+        <!-- Needles（可编辑） -->
         <el-form-item label="Needles">
           <el-input v-model="editForm.needles" type="number"></el-input>
         </el-form-item>
+        <!-- Status（只读） -->
         <el-form-item label="Status">
-          <el-select v-model="editForm.status" placeholder="Select">
-            <el-option label="Initial" value="initial"></el-option>
-            <el-option label="Injected" value="injected"></el-option>
-            <el-option label="Imaged" value="imaged"></el-option>
-            <el-option label="Uploaded" value="uploaded"></el-option>
-            <el-option label="Marked" value="marked"></el-option>
-            <el-option label="Matched" value="matched"></el-option>
-          </el-select>
+          <el-input v-model="editForm.status" disabled></el-input>
         </el-form-item>
       </el-form>
+      <!-- Footer Buttons -->
       <template #footer>
         <button class="btn" @click="editDialogVisible = false">Cancel</button>
         <button class="btn" @click="saveSampleData">Save</button>
       </template>
     </el-dialog>
 
+    <!-- 编辑/新建 数据的Dialog -->
+    <el-dialog v-model="uploadDialogVisible" title="Upload an injection file and create a sample record" width="50%">
+      <el-form :model="editForm" label-width="150px">
+        <!-- 上传文件 -->
+        <el-form-item label="Upload CSV File">
+          <el-upload
+              class="upload-demo"
+              drag
+              :multiple="false"
+              :file-list="fileList"
+              :before-upload="parseFileName"
+              :on-change="handleFileChange"
+              :on-remove="handleFileRemove"
+              :auto-upload="false"
+          >
+            <i class="el-icon-upload"></i>
+            <div class="el-upload__text">Drag .csv file here or click to upload</div>
+          </el-upload>
+        </el-form-item>
+
+        <!-- Channels -->
+        <el-form-item label="Channels Number">
+          <el-input v-model.number="editForm.channels" type="number" placeholder="Enter channels number" />
+        </el-form-item>
+
+        <!-- Needles -->
+        <el-form-item label="Needles Number">
+          <el-input v-model.number="editForm.needles" type="number" placeholder="Enter needles number" />
+        </el-form-item>
+      </el-form>
+
+      <!-- Dialog Footer -->
+      <template #footer>
+        <el-button @click="cancelUpload">Cancel</el-button>
+        <el-button type="primary" @click="saveUploadedData">Save</el-button>
+      </template>
+    </el-dialog>
     <!-- Imaging Info Dialog -->
+    <!-- 新建 Imaging Info的 dialog -->
+    <el-dialog v-model="uploadImageDialogVisible" title="Upload imaging info files and create imaging records" width="50%">
+      <el-form :model="editForm" label-width="150px">
+        <!-- 上传文件 -->
+        <el-form-item label="Upload xlsx/xml File">
+          <el-upload
+              class="upload-demo"
+              drag
+              :multiple="false"
+              :file-list="imagingFileList"
+              :before-upload="parseImagingFileName"
+              :on-change="handleImagingFileChange"
+              :on-remove="handleImagingFileRemove"
+              :auto-upload="false"
+          >
+            <i class="el-icon-upload"></i>
+            <div class="el-upload__text">Drag .xlsx/xml file here or click to upload</div>
+          </el-upload>
+        </el-form-item>
+      </el-form>
+
+      <!-- Dialog Footer -->
+      <template #footer>
+        <el-button @click="cancelUpload">Cancel</el-button>
+        <el-button type="primary" @click="newImagingRecord">Save</el-button>
+      </template>
+    </el-dialog>
+
     <el-dialog
         v-model="showImagingDialog"
         title="Imaging Records"
@@ -110,12 +175,12 @@
     >
       <div class="dialog-content">
         <div class="new-injection-section">
-          <el-tooltip content="新建 Imaging Record">
-            <button class="btn new-btn" @click="newImagingRecord">New</button>
+          <el-tooltip content="create a new Imaging Record">
+            <button class="btn new-btn" @click="handleNewImagingRecord">New</button>
           </el-tooltip>
-        </div>
-        <div class="imaging-map-section">
-          <h4>Imaging map (灌注地图, 成像地图)</h4>
+          <el-tooltip content="upload and show Imaging map">
+            <button class="btn new-btn" @click="uploadImagingMap">Imaging map</button>
+          </el-tooltip>
         </div>
         <table class="imaging-table">
           <thead>
@@ -163,7 +228,7 @@
     </el-dialog>
 
     <!-- Imaging Block Edit Dialog -->
-    <el-dialog v-model="imagingBlockDialogVisible" title="Imaging Block Detail" width="600px">
+    <el-dialog v-model="editImageDialogVisible" title="Imaging Block Detail" width="600px">
       <el-form :model="imagingBlockForm" label-width="120px">
         <el-form-item label="Imaging ID">
           <el-input v-model="imagingBlockForm.id" disabled></el-input>
@@ -173,23 +238,10 @@
         </el-form-item>
         <el-form-item label="Status">
           <el-select v-model="imagingBlockForm.status" placeholder="Select">
-            <el-option label="Initial" value="initial"></el-option>
-            <el-option label="Injected" value="injected"></el-option>
             <el-option label="Imaged" value="imaged"></el-option>
-            <el-option label="Uploaded" value="uploaded"></el-option>
             <el-option label="Marked" value="marked"></el-option>
-            <el-option label="Matched" value="matched"></el-option>
           </el-select>
         </el-form-item>
-        <!-- 如果有 imaged 和 marked 字段，可以取消注释并添加到后端 -->
-        <!--
-        <el-form-item label="Imaged">
-          <el-switch v-model="imagingBlockForm.imaged"></el-switch>
-        </el-form-item>
-        <el-form-item label="Marked">
-          <el-switch v-model="imagingBlockForm.marked"></el-switch>
-        </el-form-item>
-        -->
       </el-form>
       <template #footer>
         <button class="btn" @click="imagingBlockDialogVisible = false">Cancel</button>
@@ -208,7 +260,7 @@ import SearchPreparation from './Search_for_Preparation.vue';
 
 // 配置 Axios 实例
 const api = axios.create({
-  baseURL: 'http://10.194.35.182:8000/api', // 根据实际情况修改
+  baseURL: 'http://localhost:8000/api', // 根据实际情况修改
   headers: {
     'Content-Type': 'application/json',
   },
@@ -249,31 +301,40 @@ const filteredData = computed(() => {
 });
 
 // 编辑对话框
-const editDialogVisible = ref(false);
-const editForm = ref({
-  id: null, // 添加 id 字段
+const uploadDialogVisible = ref(false);
+const editDialogVisible = ref(false)
+
+let editForm = ref({
+  id: null,
   sampleId: '',
   tissueId: '',
   rollId: '',
   sliceId: '',
-  blockId: '',
+  blockId: '--',
   channels: 0,
   needles: 0,
-  status: 'initial', // 默认值为 'initial'
+  status: 'injected', // 默认状态为 injected
   operator: '',
 });
-let isNew = false;
+let fileList = ref([]);
 
 // Imaging dialog
 const showImagingDialog = ref(false);
 const imagingRecords = ref([]);
 const imagingSelectAll = ref(false);
 const selectedImagingIds = ref([]);
-const currentSampleId = ref(null); // 当前选中的样本 ID
+let currentSampleId = ref(''); // 当前选中的样本 ID
+let currentSampleIndex = ref('')
 
 // Imaging Block Edit Dialog
-const imagingBlockDialogVisible = ref(false);
-const imagingBlockForm = ref({});
+const uploadImageDialogVisible = ref(false)
+const editImageDialogVisible = ref(false)
+const imagingBlockForm = ref({
+  id: null,
+  status: 'imaged', // 默认状态为 injected
+  producer: '',
+});
+let imagingFileList = ref([]);
 
 // 初始化获取数据
 onMounted(() => {
@@ -298,27 +359,146 @@ function receiveData(params) {
 
 // 新建数据项
 function handleNew() {
-  isNew = true;
+  resetForm();
+  uploadDialogVisible.value = true;
+}
+function resetForm() {
   editForm.value = {
     id: null,
     sampleId: '',
     tissueId: '',
     rollId: '',
     sliceId: '',
-    blockId: '',
+    blockId: '--', // 默认值
     channels: 0,
     needles: 0,
-    status: 'initial',
+    status: 'injected',
     operator: '',
   };
-  editDialogVisible.value = true;
+  fileList.value = [];
 }
 
 // 预览/编辑数据项
 function handleViewEdit(row) {
-  isNew = false;
   editForm.value = { ...row };
   editDialogVisible.value = true;
+}
+function handleFileChange(file) {
+  console.log(file);
+  fileList.value = [file];
+  parseFileName(file);
+}
+function handleFileRemove() {
+  fileList.value = [];
+}
+// 在上传文件前解析文件名
+function parseFileName(file) {
+  console.log(file)
+  const fileName = file.name.replace('.csv', ''); // 去掉文件扩展名
+  const parts = fileName.split('-'); // 按照 '-' 分割文件名
+
+  // 按顺序解析文件名
+  editForm.value.sampleId = parts[0] || '';
+  editForm.value.tissueId = parts[1] || '';
+  editForm.value.rollId = parts[2] || '';
+  editForm.value.sliceId = parts[3] || '';
+  editForm.value.blockId = parts[4] || '--'; // 如果没有 blockId，填充为 '--'
+  console.log(editForm.value)
+  return false; // 停止自动上传
+}
+async function uploadCSVToDB() {
+  if (fileList.value.length === 0) {
+    this.$message.error('Please select a CSV file.');
+    return;
+  }
+
+  const file =fileList.value[0].raw;
+
+
+  // 检查文件是否已经存在
+  // const checkFileExistsResponse = await axios.get(`/api/check_csv_exists?filename=${file.name}`);
+  // if (checkFileExistsResponse.data.exists) {
+  //   this.$message.error('File with the same name already exists. Upload aborted!');
+  //   return;
+  // }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  api.post('/upload_csv_to_db', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+      .then(() => {
+        this.$message.success('CSV uploaded to database successfully');
+        fileList = [];
+      })
+      .catch(error => {
+        if (error.response && error.response.data.detail) {
+          const errorMessage = error.response.data.detail;
+          if (errorMessage.includes('CSV file must contain an ID column.')) {
+            this.$message.error('File must contain an ID column. Please check and re-upload.');
+          } else if (errorMessage.includes('File name does not match its ID column')) {
+            this.$message.error('File name and its ID column do not match. Please check and re-upload.');
+          } else if (errorMessage.includes('Missing columns:')) {
+            this.$message.error(`Missing columns: ${errorMessage.split('Missing columns: ')[1]}`);
+          } else if (errorMessage.includes('Columns with missing values:')) {
+            this.$message.error(`Columns with missing values: ${errorMessage.split('Columns with missing values: ')[1]}`);
+          } else if (errorMessage.includes('No matching sample found')) {
+            this.$message.error('No matching sample found. Please check and re-upload.');
+          } else if (errorMessage.includes('Abnormal value in dye_name column.')) {
+            this.$message.error('Abnormal value in dye_name column. Please check and re-upload.');
+          } else if (errorMessage.includes('Concentration contents error.')) {
+            this.$message.error('Concentration contents error. Please check and re-upload.');
+          } else if (errorMessage.includes('Unable to convert date format.')) {
+            this.$message.error('Unable to convert date format. Please check and re-upload.');
+            // } else if (errorMessage.includes('Database insertion failed')) {
+            //   this.$message.error('Table format error. Please check and re-upload.');
+          } else if (errorMessage.includes('Database insertion failed:')) {
+            this.$message.error(`Database insertion failed. ${errorMessage.split('Database insertion failed:')[1]}`);
+          } else if (errorMessage.includes('Error processing CSV file:')) {
+            this.$message.error(`Error processing CSV file. ${errorMessage.split('Error processing CSV file:')[1]}`);
+          } else {
+            this.$message.error(errorMessage);
+          }
+        } else {
+          this.$message.error('CSV upload to database failed.');
+        }
+      });
+}
+
+async function saveUploadedData() {
+  console.log(editForm.value)
+  if (!editForm.value.sampleId || !editForm.value.tissueId || !editForm.value.rollId || !editForm.value.sliceId) {
+    ElMessage.error('SampleID, TissueID, RollID, and SliceID are required.');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('sampleId', editForm.value.sampleId);
+  formData.append('tissueId', editForm.value.tissueId);
+  formData.append('rollId', editForm.value.rollId);
+  formData.append('sliceId', editForm.value.sliceId);
+  formData.append('blockId', editForm.value.blockId);
+  formData.append('channels', editForm.value.channels);
+  formData.append('needles', editForm.value.needles);
+  formData.append('status', editForm.value.status);
+
+  try {
+    await uploadCSVToDB()
+    const newSample = { ...editForm.value, imaging_records: [] }; // 新建时 imaging_records 为空
+    const response = await api.post('/sample_preparation', newSample);
+    rawData.value.push(response.data);
+    ElMessage.success('New sample added.');
+  } catch (error) {
+    console.error('Error saving data:', error);
+    ElMessage.error('Failed to save data.');
+  }
+}
+
+// 取消上传
+function cancelUpload() {
+  uploadDialogVisible.value = false;
+  resetForm();
 }
 
 // 保存样本数据（新建或更新）
@@ -327,35 +507,23 @@ async function saveSampleData() {
     ElMessage.warning('Sample ID is required.');
     return;
   }
-
-  if (isNew) {
-    // POST 到后端新建
-    try {
-      const newSample = { ...editForm.value, imaging_records: [] }; // 新建时 imaging_records 为空
-      const response = await api.post('/sample_preparation', newSample);
-      rawData.value.push(response.data);
-      ElMessage.success('New sample added.');
-    } catch (error) {
-      console.error('Error adding sample:', error);
-      ElMessage.error('Failed to add sample.');
-    }
-  } else {
     // PUT 到后端更新
-    try {
-      const updatedSample = { ...editForm.value, imaging_records:  editForm.value.imaging_records || [] };
-      const response = await api.put(`/sample_preparation/${editForm.value.id}`, updatedSample);
-      const index = rawData.value.findIndex(item => item.id === editForm.value.id);
-      if (index > -1) {
-        rawData.value.splice(index, 1, response.data);
-        ElMessage.success('Sample updated.');
-      }
-    } catch (error) {
-      console.error('Error updating sample:', error);
-      ElMessage.error('Failed to update sample.');
+  try {
+    const updatedSample = {...editForm.value, imaging_records: editForm.value.imaging_records || []};
+    const response = await api.put(`/sample_preparation/${editForm.value.id}`, updatedSample);
+    const index = rawData.value.findIndex(item => item.id === editForm.value.id);
+    if (index > -1) {
+      rawData.value.splice(index, 1, response.data);
+      ElMessage.success('Sample updated.');
     }
+  } catch (error) {
+    console.error('Error updating sample:', error);
+    ElMessage.error('Failed to update sample.');
   }
+
   editDialogVisible.value = false;
 }
+
 
 // 全局 Cache & Inspect 操作
 function handleGlobalCache() {
@@ -406,27 +574,121 @@ async function updateSampleStatus(sampleId, status) {
 function openImagingDialog(row) {
   console.log('Open imaging dialog for:', row);
   showImagingDialog.value = true;
-  currentSampleId.value = row.id;
+
+  // 拼接 currentSampleId 的基础部分
+  currentSampleId.value = `${row.sampleId}-${row.tissueId}-${row.rollId}-${row.sliceId}`;
+
+  // 判断 Block ID 是否为 '--'，如果不是，则添加到末尾
+  if (row.blockId && row.blockId !== '--') {
+    currentSampleId.value += `-${row.blockId}`;
+  }
+
+  console.log('Generated currentSampleId:', currentSampleId.value); // 打印调试信息
+  currentSampleIndex = row.id
   imagingRecords.value = row.imaging_records ? [...row.imaging_records] : [];
 }
 
+function parseImagingFileName(file) {
+  console.log(file);
+
+  const fileName = file.name.replace(/\.(xlsx|xml)$/, ''); // 去掉文件扩展名
+  const samplePrefix = currentSampleId.value; // 当前样本 ID（P00095-T001-R001-S029-B1）
+  console.log('current sample id',currentSampleId.value)
+  if (!fileName.startsWith(samplePrefix)) {
+    console.error('File name does not match the current sample ID!');
+    return false; // 停止上传
+  }
+
+  const remainingPart = fileName.replace(`${samplePrefix}-`, ''); // 去除 current_sample_id 部分
+  const parts = remainingPart.split('-'); // 按照 '-' 分割剩余部分
+
+  // 解析 Imaging ID 和 Producer
+  const imagingIdCandidate = parts[0]; // 判断第一个字段是否为 Imaging ID
+  let imagingId;
+  if (!isNaN(imagingIdCandidate)) {
+    imagingId = parseInt(imagingIdCandidate, 10); // 如果是数字，则直接赋值为 Imaging ID
+  } else {
+    imagingId = imagingRecords.value.length + 1; // 否则根据 imagingRecords 长度加 1
+  }
+
+  const producer = parts[parts.length - 1]; // 分割后的最后一个值赋值给 Producer
+
+  // 更新 imagingBlockForm
+  imagingBlockForm.value = {
+    ...imagingBlockForm.value, // 保留其他字段
+    id: imagingId, // Imaging ID
+    producer: producer || '', // Producer，默认为空字符串
+  };
+
+  console.log('Updated imagingBlockForm:', imagingBlockForm.value);
+  return false; // 停止自动上传
+}
+function handleImagingFileChange(file) {
+  console.log(file);
+  imagingFileList.value = [file];
+  parseImagingFileName(file);
+}
+function handleImagingFileRemove() {
+  imagingFileList.value = [];
+}
 // 关闭 imaging dialog
 function closeImagingDialog() {
   showImagingDialog.value = false;
   selectedImagingIds.value = [];
   imagingSelectAll.value = false;
-  currentSampleId.value = null;
+  currentSampleId.value = '';
 }
 
+function handleNewImagingRecord() {
+  resetImagingBlockForm();
+  uploadImageDialogVisible.value = true;
+}
+
+function resetImagingBlockForm() {
+  imagingBlockForm.value = {
+    id: null,
+    status: 'imaged', // 默认状态为 injected
+    producer: '',
+  };
+  imagingFileList.value = [];
+}
+
+async function uploadImagingInfoFiles() {
+  const formData = new FormData();
+  formData.append('metadata_file', imagingFileList.value[0].raw);
+  console.log('formdata',formData)
+  api.post('/upload_imaging_info_new', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+      .then(response => {
+        // Handle success
+        this.$message.success('File uploaded successfully');
+        const uploadedFiles = response.data.uploaded_files || [];
+        // Remove uploaded files from the file list
+        this.metadataFilesList = this.metadataFilesList.filter(file => !uploadedFiles.includes(file.name));
+      })
+      .catch(error => {
+        let errorMessage = 'Files upload failed';
+        if (error.response && error.response.data.detail) {
+          if (typeof error.response.data.detail === 'string') {
+            errorMessage = error.response.data.detail;
+          } else if (typeof error.response.data.detail === 'object') {
+            errorMessage = error.response.data.detail.error || 'Files upload failed';
+          }
+        }
+        this.$message.error(errorMessage);
+      });
+}
 // 新建 Imaging Record
 async function newImagingRecord() {
   try {
+    await uploadImagingInfoFiles()
     const newRecord = {
-      id: 1, // 绑定父表 SamplePreparation 的 ID
-      producer: 'wlj',
-      status: 'initial',
+      id: currentSampleIndex, // 绑定父表 SamplePreparation 的 ID
+      producer: imagingBlockForm.value.producer,
+      status: imagingBlockForm.value.status,
     };
-    console.log(newRecord.sample_preparation_id)
+    console.log(newRecord.id)
     // 发送 POST 请求创建新记录
     const response = await api.post('/imaging_records', newRecord);
     console.log(response)
@@ -446,7 +708,7 @@ async function deleteImagingRecords() {
   }
   try {
     // 发送 DELETE 请求，删除选中的记录
-    await api.delete('/imaging_records', { data: selectedImagingIds.value });
+    await api.delete(`/imaging_records/${selectedImagingIds.value}`);
     // 本地移除已删除的记录
     imagingRecords.value = imagingRecords.value.filter(record => !selectedImagingIds.value.includes(record.id));
     selectedImagingIds.value = [];
@@ -496,7 +758,7 @@ function toggleSelectAllImaging() {
 // 打开 Imaging Block Edit Dialog
 function viewEditBlock(img) {
   imagingBlockForm.value = { ...img };
-  imagingBlockDialogVisible.value = true;
+  editImageDialogVisible.value = true;
 }
 
 // 保存 Imaging Block
@@ -517,7 +779,7 @@ async function saveImagingBlock() {
       ElMessage.success('Imaging record updated.');
     }
 
-    imagingBlockDialogVisible.value = false;
+    editImageDialogVisible.value = false;
   } catch (error) {
     console.error('Error saving imaging block:', error);
     ElMessage.error('Failed to update imaging record.');
