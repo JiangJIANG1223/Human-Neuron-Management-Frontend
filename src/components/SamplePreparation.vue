@@ -10,10 +10,7 @@
       </div>
 
       <!-- 表单外的操作按钮：Cache, Inspect -->
-      <div class="external-actions">
-        <button class="btn cache-btn" @click="handleGlobalCache">Cache</button>
-        <button class="btn inspect-btn" @click="handleGlobalInspect">Inspect</button>
-      </div>
+      <el-button class="btn cache-btn" @click="openInjectionFilesDialog">Injection Files</el-button>
     </div>
 
     <!-- 数据表格区域 -->
@@ -199,9 +196,9 @@
           <tbody>
           <tr v-for="(img) in imagingRecords" :key="img.id">
             <td>
-              <input type="checkbox" v-model="selectedImagingIds" :value="img.id" />
+              <input type="checkbox" v-model="selectedImagingIds" :value="img.imaging_id" />
             </td>
-            <td>{{ img.id }}</td>
+            <td>{{ img.imaging_id }}</td>
             <td>{{ img.producer }}</td>
             <td>{{ img.status }}</td>
             <td>
@@ -231,7 +228,7 @@
     <el-dialog v-model="editImageDialogVisible" title="Imaging Block Detail" width="600px">
       <el-form :model="imagingBlockForm" label-width="120px">
         <el-form-item label="Imaging ID">
-          <el-input v-model="imagingBlockForm.id" disabled></el-input>
+          <el-input v-model="imagingBlockForm.imaging_id" disabled></el-input>
         </el-form-item>
         <el-form-item label="Producer">
           <el-input v-model="imagingBlockForm.producer"></el-input>
@@ -244,9 +241,63 @@
         </el-form-item>
       </el-form>
       <template #footer>
-        <button class="btn" @click="imagingBlockDialogVisible = false">Cancel</button>
+        <button class="btn" @click="editImageDialogVisible = false">Cancel</button>
         <button class="btn" @click="saveImagingBlock">Save</button>
         <button class="btn" @click="downloadImagingBlock">Download</button>
+      </template>
+    </el-dialog>
+
+    <el-dialog title="Injection Files" v-model="injectionFilesDialogVisible" width="50%">
+      <!-- 存储/下载/上传(入库) 功能选择 -->
+      <el-radio-group v-model="selectedTab" @change="handleTabChange">
+        <el-radio-button value="storage">01 Cache</el-radio-button>
+        <el-radio-button value="download">02 Inspect</el-radio-button>
+      </el-radio-group>
+
+      <!-- 存储部分 -->
+      <div v-if="selectedTab === 'storage'">
+        <el-form label-width="120px">
+          <el-form-item label="Subfolder Name" style="margin-top: 18px; margin-bottom: 15px;">
+            <el-input v-model="subfolderName" placeholder="Enter subfolder name, for example, P00001-T001-R001-S001"></el-input>
+          </el-form-item>
+
+          <el-upload
+              class="upload-demo"
+              drag
+              :multiple="true"
+              :file-list="injectionFilesList"
+              :before-upload="beforeUpload"
+              :on-change="handleFilesChange"
+              :on-remove="handleFilesRemove"
+              :auto-upload="false"
+          >
+            <template #default>
+              <i class="el-icon-upload"></i>
+              <div class="el-upload__text">Drag files here or click to upload</div>
+              <div class="el-upload__tip">Please upload .csv file and two images.</div>
+            </template>
+          </el-upload>
+
+          <!-- 存储按钮 -->
+          <el-button type="primary" @click="uploadAllFiles" :disabled="injectionFilesList.length === 0">Upload Subfolder</el-button>
+        </el-form>
+      </div>
+
+      <!-- 下载部分 -->
+      <div v-if="selectedTab === 'download'">
+        <!-- 确保 folderList 加载完成后再渲染 el-select -->
+        <el-select v-if="folderList.length > 0" v-model="selectedFolder" placeholder="Select folder" style="margin-top: 18px; margin-bottom: 15px;">
+          <el-option
+              v-for="folder in folderList"
+              :key="folder"
+              :label="folder"
+              :value="folder">
+          </el-option>
+        </el-select>
+        <el-button type="primary" @click="downloadFolder" :disabled="!selectedFolder">Download Subfolder</el-button>
+      </div>
+      <template #footer>
+        <el-button @click="injectionFilesDialogVisible = false">Cancel</el-button>
       </template>
     </el-dialog>
   </div>
@@ -330,11 +381,19 @@ let currentSampleIndex = ref('')
 const uploadImageDialogVisible = ref(false)
 const editImageDialogVisible = ref(false)
 const imagingBlockForm = ref({
-  id: null,
+  imaging_id: null,
+  sample_preparation_id: null,
   status: 'imaged', // 默认状态为 injected
   producer: '',
 });
 let imagingFileList = ref([]);
+
+const injectionFilesDialogVisible = ref(false);
+let selectedTab = 'download'; // 默认选择上传功能
+let subfolderName = ref(''); // 用户输入的子文件夹名称
+let folderList = ref([]);  // 存储已有子文件夹列表，确保其初始值为一个空数组
+let selectedFolder = ref(null);  // 选中的文件夹，初始化为 null
+let injectionFilesList = ref([]);  // 存储上传的文件列表
 
 // 初始化获取数据
 onMounted(() => {
@@ -357,6 +416,68 @@ function receiveData(params) {
   searchParams.value = params;
 }
 
+function beforeUpload(file) {
+  // 获取文件的扩展名
+  const fileExtension = file.name.split('.').pop().toLowerCase();
+
+  // 判断文件是否为 CSV 或图片
+  const isCSVOrImage = fileExtension === 'csv' || file.type.startsWith('image/');
+
+  if (!isCSVOrImage) {
+    this.$message.error('Only CSV and image file are allowed.');
+    return false;
+  }
+  return true;
+}
+
+function handleTabChange() {
+  console.log('selectedTab: ', selectedTab);
+}
+  // 文件变更处理
+function handleFilesChange(file, filesList) {
+  injectionFilesList.value = filesList;  // 更新文件列表
+}
+function handleFilesRemove(file, filesList) {
+  injectionFilesList.value = filesList;  // 更新文件列表
+}
+function validateSubfolderName() {
+  const pattern = /^P\d{5}-T\d{3}-R\d{3}-S\d{3}(-B\d)?$/;
+  return pattern.test(subfolderName.value);
+}
+async function uploadAllFiles() {
+  console.log('uploadAllFiles');
+  if (!subfolderName.value) {
+    this.$message.error('Please enter a subfolder name. Expected format: P00001-T001-R001-S001(-B1)');
+    return;
+  }
+  console.log('uploadAllFiles',subfolderName.value);
+  // 检查subfolderName格式
+  if (!validateSubfolderName()) {
+    console.log('Please check the subfolder name.');
+    return;
+  }
+  console.log('uploadAllFiles',subfolderName.value);
+  const formData = new FormData();
+  formData.append('subfolder_name', subfolderName.value);  // 用户输入的子文件夹名称
+  console.log(formData.values)
+  injectionFilesList.value.forEach(file => {
+    formData.append('files', file.raw);  // 将每个文件添加到 formData 中
+  });
+
+  await api.post('/upload_files', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+      .then(() => {
+        this.$message.success('Files stored successfully.');
+        injectionFilesList = [];  // 清空文件列表
+        subfolderName = '';    // 清空 subfolderName
+      })
+      .catch(() => {
+        this.$message.error('Failed to store files. Please try again.');
+      });
+}
 // 新建数据项
 function handleNew() {
   resetForm();
@@ -524,16 +645,52 @@ async function saveSampleData() {
   editDialogVisible.value = false;
 }
 
-
-// 全局 Cache & Inspect 操作
-function handleGlobalCache() {
-  ElMessage.info('Global cache action.');
+function openInjectionFilesDialog() {
+  injectionFilesDialogVisible.value = true;
+  loadFolders();  // 加载已有子文件夹
 }
-
-function handleGlobalInspect() {
-  ElMessage.info('Global inspect action.');
+function loadFolders() {
+  api.get('/folders').then(response => {
+    folderList.value = response.data.folders;
+    if (folderList.value.length > 0) {
+      selectedFolder = folderList.value[0];  // 设置默认选中的文件夹
+    }
+  });
 }
+// 下载文件夹
+function downloadFolder() {
+  if (!this.selectedFolder) {
+    this.$message.error('Please select a folder.');
+    return;
+  }
+  // 请求下载文件夹，设置 responseType 为 'blob'
+  axios.get(`/api/download_folder?folder=${this.selectedFolder}`, {
+    responseType: 'blob'  // 必须设置 responseType 为 'blob' 来接收二进制数据
+  })
+      .then(response => {
+        // 创建 Blob 对象
+        const blob = new Blob([response.data], { type: 'application/zip' });
 
+        // 创建一个 URL，用于下载文件
+        const downloadUrl = window.URL.createObjectURL(blob);
+
+        // 创建一个临时链接并点击，触发下载
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.setAttribute('download', `${this.selectedFolder}.zip`); // 设置下载文件名
+        document.body.appendChild(link);
+        link.click();
+
+        // 清理操作
+        window.URL.revokeObjectURL(downloadUrl);
+        document.body.removeChild(link);
+
+        this.$message.success('Folder downloaded successfully');
+      })
+      .catch(() => {
+        this.$message.error('Failed to download folder');
+      });
+}
 // Perfusion 和 Bright Field 相关操作
 function uploadPerfusion(row) {
   console.log('Upload perfusion table for:', row);
@@ -584,8 +741,10 @@ function openImagingDialog(row) {
   }
 
   console.log('Generated currentSampleId:', currentSampleId.value); // 打印调试信息
-  currentSampleIndex = row.id
+  currentSampleIndex.value = row.id
+  console.log('currentSampleIndex',currentSampleIndex.value)
   imagingRecords.value = row.imaging_records ? [...row.imaging_records] : [];
+  console.log('imagingRecords:', imagingRecords);
 }
 
 function parseImagingFileName(file) {
@@ -606,9 +765,12 @@ function parseImagingFileName(file) {
   const imagingIdCandidate = parts[0]; // 判断第一个字段是否为 Imaging ID
   let imagingId;
   if (!isNaN(imagingIdCandidate)) {
-    imagingId = parseInt(imagingIdCandidate, 10); // 如果是数字，则直接赋值为 Imaging ID
+    console.log(typeof (imagingIdCandidate))
+    imagingId = imagingIdCandidate // 如果是数字，则直接赋值为 Imaging ID/
+    // imagingId = parseInt(imagingIdCandidate, 10); // 如果是数字，则直接赋值为 Imaging ID/
   } else {
-    imagingId = imagingRecords.value.length + 1; // 否则根据 imagingRecords 长度加 1
+    // imagingId = imagingRecords.value.length + 1; // 否则根据 imagingRecords 长度加 1
+    imagingId = '--'
   }
 
   const producer = parts[parts.length - 1]; // 分割后的最后一个值赋值给 Producer
@@ -616,7 +778,7 @@ function parseImagingFileName(file) {
   // 更新 imagingBlockForm
   imagingBlockForm.value = {
     ...imagingBlockForm.value, // 保留其他字段
-    id: imagingId, // Imaging ID
+    imaging_id: imagingId, // Imaging ID
     producer: producer || '', // Producer，默认为空字符串
   };
 
@@ -646,7 +808,8 @@ function handleNewImagingRecord() {
 
 function resetImagingBlockForm() {
   imagingBlockForm.value = {
-    id: null,
+    imaging_id: null,
+    sample_preparation_id: null,
     status: 'imaged', // 默认状态为 injected
     producer: '',
   };
@@ -668,31 +831,42 @@ async function uploadImagingInfoFiles() {
         this.metadataFilesList = this.metadataFilesList.filter(file => !uploadedFiles.includes(file.name));
       })
       .catch(error => {
-        let errorMessage = 'Files upload failed';
+        // let error = 'Files upload failed';
         if (error.response && error.response.data.detail) {
           if (typeof error.response.data.detail === 'string') {
-            errorMessage = error.response.data.detail;
+            // errorMessage = error.response.data.detail;
           } else if (typeof error.response.data.detail === 'object') {
-            errorMessage = error.response.data.detail.error || 'Files upload failed';
+            // errorMessage = error.response.data.detail.error || 'Files upload failed';
           }
         }
-        this.$message.error(errorMessage);
+        // this.$message.error(errorMessage);
       });
 }
 // 新建 Imaging Record
 async function newImagingRecord() {
   try {
-    await uploadImagingInfoFiles()
+    await uploadImagingInfoFiles();
+
     const newRecord = {
-      id: currentSampleIndex, // 绑定父表 SamplePreparation 的 ID
+      imaging_id: imagingBlockForm.value.imaging_id, // Imaging ID
+      sample_preparation_id: currentSampleIndex.value, // 父表 SamplePreparation 的 ID
       producer: imagingBlockForm.value.producer,
       status: imagingBlockForm.value.status,
     };
-    console.log(newRecord.id)
+
     // 发送 POST 请求创建新记录
     const response = await api.post('/imaging_records', newRecord);
-    console.log(response)
-    imagingRecords.value.push(response.data); // 将新记录添加到前端表格
+    const createdRecord = response.data;
+
+    // 本地更新 imagingRecords
+    imagingRecords.value.push(createdRecord);
+
+    // 同时更新 rawData 中对应样本的 imaging_records
+    const sampleIndex = rawData.value.findIndex(sample => sample.id === currentSampleIndex.value);
+    if (sampleIndex !== -1) {
+      rawData.value[sampleIndex].imaging_records.push(createdRecord);
+    }
+
     ElMessage.success('New imaging record added.');
   } catch (error) {
     console.error('Error creating imaging record:', error);
@@ -700,26 +874,61 @@ async function newImagingRecord() {
   }
 }
 
-// 删除选中的 Imaging Records
 async function deleteImagingRecords() {
   if (selectedImagingIds.value.length === 0) {
     ElMessage.warning('No imaging records selected.');
     return;
   }
+
   try {
-    // 发送 DELETE 请求，删除选中的记录
-    await api.delete(`/imaging_records/${selectedImagingIds.value}`);
-    // 本地移除已删除的记录
-    imagingRecords.value = imagingRecords.value.filter(record => !selectedImagingIds.value.includes(record.id));
+    // 遍历 selectedImagingIds 数组，找到所有对应的记录
+    const recordsToDelete = selectedImagingIds.value.map(selectedId => {
+      const record = imagingRecords.value.find(record => record.imaging_id === selectedId);
+      if (record) {
+        console.log('Record to delete:', record);
+        return {
+          imaging_id: record.imaging_id,
+          sample_preparation_id: record.sample_preparation_id,
+        };
+      } else {
+        console.warn(`Record with imaging_id ${selectedId} not found.`);
+        return null;
+      }
+    }).filter(record => record !== null); // 过滤掉未找到的记录
+
+    if (recordsToDelete.length === 0) {
+      ElMessage.warning('No valid imaging records found to delete.');
+      return;
+    }
+
+    console.log('Records to delete:', recordsToDelete);
+
+    // 执行批量删除请求
+    for (const record of recordsToDelete) {
+      await api.delete(`/imaging_records/${record.sample_preparation_id}/${record.imaging_id}`);
+    }
+
+    // 本地更新 imagingRecords
+    imagingRecords.value = imagingRecords.value.filter(
+        record => !selectedImagingIds.value.includes(record.imaging_id)
+    );
+
+    // 同时更新 rawData 中的 imaging_records
+    const sampleIndex = rawData.value.findIndex(sample => sample.id === currentSampleIndex.value);
+    if (sampleIndex !== -1) {
+      rawData.value[sampleIndex].imaging_records = imagingRecords.value;
+    }
+
+    // 清空选中状态
     selectedImagingIds.value = [];
     imagingSelectAll.value = false;
+
     ElMessage.success('Selected imaging records deleted.');
   } catch (error) {
     console.error('Error deleting imaging records:', error);
     ElMessage.error('Failed to delete imaging records.');
   }
 }
-
 // 保存 imaging records 到后端
 async function saveImagingRecords() {
   if (!currentSampleId.value) {
@@ -765,20 +974,21 @@ function viewEditBlock(img) {
 async function saveImagingBlock() {
   try {
     const updatedRecord = {
+      imaging_id: imagingBlockForm.value.imaging_id,
+      sample_preparation_id: imagingBlockForm.value.sample_preparation_id,
       producer: imagingBlockForm.value.producer,
       status: imagingBlockForm.value.status,
     };
-
+    console.log(imagingBlockForm.value);
     // 发送 PUT 请求更新记录
-    const response = await api.put(`/imaging_records/${imagingBlockForm.value.id}`, updatedRecord);
+    const response = await api.put(`/imaging_records/${imagingBlockForm.value.sample_preparation_id}/${imagingBlockForm.value.imaging_id}`, updatedRecord);
 
     // 更新本地表格数据
-    const index = imagingRecords.value.findIndex(record => record.id === imagingBlockForm.value.id);
+    const index = imagingRecords.value.findIndex(record => record.imaging_id === imagingBlockForm.value.imaging_id);
     if (index > -1) {
       imagingRecords.value.splice(index, 1, response.data);
       ElMessage.success('Imaging record updated.');
     }
-
     editImageDialogVisible.value = false;
   } catch (error) {
     console.error('Error saving imaging block:', error);
@@ -923,578 +1133,3 @@ function toCell(img) {
   text-align: left;
 }
 </style>
-
-<!--<template>-->
-<!--  <div class="container">-->
-<!--    <SearchPreparation @search="receiveData" />-->
-
-<!--    <div style="display: flex;justify-content: space-between;align-items: center;">-->
-<!--      <div class="new-injection-section">-->
-<!--        <el-tooltip-->
-<!--          content="new a injection record table"-->
-<!--        >-->
-<!--          <button class="btn new-btn" @click="handleNew">New</button>-->
-<!--        </el-tooltip>-->
-<!--      </div>-->
-
-<!--      &lt;!&ndash; 表单外的操作按钮：Cache, Inspect, Upload &ndash;&gt;-->
-<!--      <div class="external-actions">-->
-<!--        <button class="btn cache-btn" @click="handleGlobalCache">Cache</button>-->
-<!--        <button class="btn inspect-btn" @click="handleGlobalInspect">Inspect</button>-->
-<!--      </div>-->
-<!--    </div>-->
-
-
-<!--    &lt;!&ndash; 数据表格区域 &ndash;&gt;-->
-<!--    <table class="data-table">-->
-<!--      <thead>-->
-<!--      <tr>-->
-<!--        <th>Sample ID</th>-->
-<!--        <th>Tissue ID</th>-->
-<!--        <th>Roll ID</th>-->
-<!--        <th>Slice ID</th>-->
-<!--        <th>Block ID</th>-->
-<!--        <th>Channels</th>-->
-<!--        <th>Needles</th>-->
-<!--        <th>Status</th>-->
-<!--        <th>Injection info</th>-->
-<!--        <th>Perfusion / Brightfield</th>-->
-<!--        <th>Imaging info</th>-->
-<!--      </tr>-->
-<!--      </thead>-->
-<!--      <tbody>-->
-<!--      <tr v-for="(row, index) in filteredData" :key="index">-->
-<!--        <td>{{ row.sampleId }}</td>-->
-<!--        <td>{{ row.tissueId }}</td>-->
-<!--        <td>{{ row.rollId }}</td>-->
-<!--        <td>{{ row.sliceId }}</td>-->
-<!--        <td>{{ row.blockId }}</td>-->
-<!--        <td>{{ row.channels }}</td>-->
-<!--        <td>{{ row.needles }}</td>-->
-<!--        <td>{{ row.status }}</td>-->
-<!--        <td>-->
-<!--          <button class="btn small-btn" @click="handleViewEdit(row)">View / Edit</button>-->
-<!--        </td>-->
-<!--        <td>-->
-<!--          <button class="btn" @click="uploadPerfusion(row)">Upload</button>-->
-<!--          <button class="btn" @click="downloadPerfusion(row)">Download</button>-->
-<!--          <button class="btn" @click="showBrightField(row)">Bright field data</button>-->
-<!--        </td>-->
-<!--        <td>-->
-<!--          <button class="btn imaging-info-btn" @click="openImagingDialog(row)">Imaging info</button>-->
-<!--        </td>-->
-<!--      </tr>-->
-<!--      </tbody>-->
-<!--    </table>-->
-
-<!--    &lt;!&ndash; 编辑/新建 数据的Dialog &ndash;&gt;-->
-<!--    <el-dialog v-model="editDialogVisible" title="View / Edit Sample" width="600px">-->
-<!--      <el-form :model="editForm" label-width="120px">-->
-<!--        <el-form-item label="Sample ID">-->
-<!--          <el-input v-model="editForm.sampleId"></el-input>-->
-<!--        </el-form-item>-->
-<!--        <el-form-item label="Tissue ID">-->
-<!--          <el-input v-model="editForm.tissueId"></el-input>-->
-<!--        </el-form-item>-->
-<!--        <el-form-item label="Roll ID">-->
-<!--          <el-input v-model="editForm.rollId"></el-input>-->
-<!--        </el-form-item>-->
-<!--        <el-form-item label="Slice ID">-->
-<!--          <el-input v-model="editForm.sliceId"></el-input>-->
-<!--        </el-form-item>-->
-<!--        <el-form-item label="Block ID">-->
-<!--          <el-input v-model="editForm.blockId"></el-input>-->
-<!--        </el-form-item>-->
-<!--        <el-form-item label="Channels">-->
-<!--          <el-input v-model="editForm.channels" type="number"></el-input>-->
-<!--        </el-form-item>-->
-<!--        <el-form-item label="Needles">-->
-<!--          <el-input v-model="editForm.needles" type="number"></el-input>-->
-<!--        </el-form-item>-->
-<!--        <el-form-item label="Status">-->
-<!--          <el-select v-model="editForm.status" placeholder="Select">-->
-<!--            <el-option label="Initial" value="Initial"></el-option>-->
-<!--            <el-option label="injected" value="injected"></el-option>-->
-<!--            <el-option label="imaged" value="imaged"></el-option>-->
-<!--            <el-option label="uploaded" value="uploaded"></el-option>-->
-<!--          </el-select>-->
-<!--        </el-form-item>-->
-<!--      </el-form>-->
-<!--      <template #footer>-->
-<!--        <button class="btn" @click="editDialogVisible = false">Cancel</button>-->
-<!--        <button class="btn" @click="saveSampleData">Save</button>-->
-<!--      </template>-->
-<!--    </el-dialog>-->
-
-<!--    &lt;!&ndash; Imaging Info Dialog &ndash;&gt;-->
-<!--    <el-dialog-->
-<!--        v-model="showImagingDialog"-->
-<!--        title="Imaging Records"-->
-<!--        width="80%"-->
-<!--        :close-on-click-modal="false"-->
-<!--        :close-on-press-escape="false"-->
-<!--        @close="closeImagingDialog"-->
-<!--    >-->
-<!--      <div class="dialog-content">-->
-<!--        <div class="new-injection-section">-->
-<!--          <el-tooltip-->
-<!--              content="new a injection record table"-->
-<!--          >-->
-<!--            <button class="btn new-btn" @click="newImagingRecord">New</button>-->
-<!--          </el-tooltip>-->
-<!--        </div>-->
-<!--        <div class="imaging-map-section">-->
-<!--          <h4>Imaging map (灌注地图, 成像地图)</h4>-->
-<!--        </div>-->
-<!--        <table class="imaging-table">-->
-<!--          <thead>-->
-<!--          <tr>-->
-<!--            <th>-->
-<!--              <input type="checkbox" v-model="imagingSelectAll" @change="toggleSelectAllImaging"/>-->
-<!--            </th>-->
-<!--            <th>Imaging id</th>-->
-<!--            <th>Producer</th>-->
-<!--            <th>Status</th>-->
-<!--&lt;!&ndash;            <th>Imaged</th>&ndash;&gt;-->
-<!--&lt;!&ndash;            <th>Marked</th>&ndash;&gt;-->
-<!--            <th>View Options</th>-->
-<!--            <th>Upload Files</th>-->
-<!--            <th>Upload to Sql</th>-->
-<!--          </tr>-->
-<!--          </thead>-->
-<!--          <tbody>-->
-<!--          <tr v-for="(img) in imagingRecords" :key="img.id">-->
-<!--            <td>-->
-<!--              <input type="checkbox" v-model="selectedImagingIds" :value="img.id"/>-->
-<!--            </td>-->
-<!--            <td>{{ img.id }}</td>-->
-<!--            <td>{{ img.producer }}</td>-->
-<!--            <td>{{ img.status }}</td>-->
-<!--&lt;!&ndash;            <td><input type="checkbox" v-model="img.imaged" /></td>&ndash;&gt;-->
-<!--&lt;!&ndash;            <td><input type="checkbox" v-model="img.marked" /></td>&ndash;&gt;-->
-<!--            <td>-->
-<!--              <button class="btn" @click="viewEditBlock(img)">View / Edit / download</button>-->
-<!--              <button class="btn" @click="imageMIP(img)">Image MIP</button>-->
-<!--            </td>-->
-<!--            <td>-->
-<!--              <button class="btn" @click="showImagingData(img)">Imaging data</button>-->
-<!--              <button class="btn" @click="showMetadata(img)">Metadata</button>-->
-<!--              <button class="btn" @click="showSomas(img)">Somas (APO)</button>-->
-<!--              <button class="btn" @click="showInjectionMatchedTable(img)">Injection matched table</button>-->
-<!--            </td>-->
-<!--            <td>-->
-<!--              <button class="btn" @click="toCell(img)" :disabled="!(img.imaged && img.marked)">To cell</button>-->
-<!--            </td>-->
-<!--          </tr>-->
-<!--          </tbody>-->
-<!--        </table>-->
-<!--      </div>-->
-<!--      <template #footer>-->
-<!--        <button class="btn delete-btn" @click="deleteImagingRecords">Delete</button>-->
-<!--      </template>-->
-<!--    </el-dialog>-->
-
-<!--    &lt;!&ndash; Imaging Block Edit Dialog &ndash;&gt;-->
-<!--    <el-dialog v-model="imagingBlockDialogVisible" title="Imaging Block Detail" width="600px">-->
-<!--      <el-form :model="imagingBlockForm" label-width="120px">-->
-<!--        <el-form-item label="Imaging ID">-->
-<!--          <el-input v-model="imagingBlockForm.id"></el-input>-->
-<!--        </el-form-item>-->
-<!--        <el-form-item label="Producer">-->
-<!--          <el-input v-model="imagingBlockForm.producer"></el-input>-->
-<!--        </el-form-item>-->
-<!--        <el-form-item label="Status">-->
-<!--          <el-input v-model="imagingBlockForm.status"></el-input>-->
-<!--        </el-form-item>-->
-<!--        <el-form-item label="Imaged">-->
-<!--          <el-switch v-model="imagingBlockForm.imaged"></el-switch>-->
-<!--        </el-form-item>-->
-<!--        <el-form-item label="Marked">-->
-<!--          <el-switch v-model="imagingBlockForm.marked"></el-switch>-->
-<!--        </el-form-item>-->
-<!--      </el-form>-->
-<!--      <template #footer>-->
-<!--        <button class="btn" @click="imagingBlockDialogVisible = false">Cancel</button>-->
-<!--        <button class="btn" @click="saveImagingBlock">Save</button>-->
-<!--        <button class="btn" @click="downloadImagingBlock">Download</button>-->
-<!--      </template>-->
-<!--    </el-dialog>-->
-<!--  </div>-->
-<!--</template>-->
-
-<!--<script setup>-->
-<!--import { ref, computed, onMounted } from 'vue'-->
-<!--import { ElMessage } from 'element-plus'-->
-<!--import SearchPreparation from './Search_for_Preparation.vue';-->
-
-<!--// 搜索参数-->
-<!--const searchParams = ref({-->
-<!--  sampleId: '',-->
-<!--  colorChannel: '',-->
-<!--  needleNumber: '',-->
-<!--  operator: '',-->
-<!--  sliceStatus: ''-->
-<!--})-->
-
-<!--// 原始数据-->
-<!--const rawData = ref([])-->
-
-<!--// 过滤数据-->
-<!--const filteredData = computed(() => {-->
-<!--  return rawData.value.filter(item => {-->
-<!--    const matchSample = searchParams.value.sampleId ? item.sampleId.includes(searchParams.value.sampleId) : true-->
-<!--    const matchChannel = searchParams.value.colorChannel-->
-<!--        ? item.channels.toString().includes(searchParams.value.colorChannel)-->
-<!--        : true-->
-<!--    const matchNeedle = searchParams.value.needleNumber-->
-<!--        ? item.needles.toString().includes(searchParams.value.needleNumber)-->
-<!--        : true-->
-<!--    const matchOperator = searchParams.value.operator-->
-<!--        ? (item.operator && item.operator.includes(searchParams.value.operator))-->
-<!--        : true-->
-<!--    const matchSliceStatus = searchParams.value.sliceStatus-->
-<!--        ? item.status.toLowerCase().includes(searchParams.value.sliceStatus.toLowerCase())-->
-<!--        : true-->
-<!--    return matchSample && matchChannel && matchNeedle && matchOperator && matchSliceStatus-->
-<!--  })-->
-<!--})-->
-
-<!--// 编辑对话框-->
-<!--const editDialogVisible = ref(false)-->
-<!--const editForm = ref({-->
-<!--  sampleId: '',-->
-<!--  tissueId: '',-->
-<!--  rollId: '',-->
-<!--  sliceId: '',-->
-<!--  blockId: '',-->
-<!--  channels: 0,-->
-<!--  needles: 0,-->
-<!--  status: 'Initial'-->
-<!--})-->
-<!--let isNew = false-->
-
-<!--// Imaging dialog-->
-<!--const showImagingDialog = ref(false)-->
-<!--const imagingRecords = ref([])-->
-<!--const imagingSelectAll = ref(false)-->
-<!--const selectedImagingIds = ref([])-->
-
-<!--// Imaging Block Edit Dialog-->
-<!--const imagingBlockDialogVisible = ref(false)-->
-<!--const imagingBlockForm = ref({})-->
-
-<!--// 初始化获取数据-->
-<!--onMounted(() => {-->
-<!--  fetchData()-->
-<!--})-->
-
-
-<!--// 3. 从后端获取数据-->
-<!--async function fetchData() {-->
-<!--  // 假设后端已按PTRSB及时间排序返回数据-->
-<!--  const data = [-->
-<!--    {-->
-<!--      sampleId: 'P00001',-->
-<!--      tissueId: 'T001',-->
-<!--      rollId: 'R001',-->
-<!--      sliceId: 'S001',-->
-<!--      blockId: 'B1',-->
-<!--      channels: 2,-->
-<!--      needles: 4,-->
-<!--      status: 'imaged',-->
-<!--      operator: 'John'-->
-<!--    },-->
-<!--    {-->
-<!--      sampleId: 'P00002',-->
-<!--      tissueId: 'T002',-->
-<!--      rollId: 'R002',-->
-<!--      sliceId: 'S002',-->
-<!--      blockId: 'B2',-->
-<!--      channels: 3,-->
-<!--      needles: 2,-->
-<!--      status: 'Initial',-->
-<!--      operator: 'Alice'-->
-<!--    }-->
-<!--  ]-->
-<!--  rawData.value = data-->
-<!--}-->
-
-<!--// 4. 新建数据项-->
-<!--function handleNew() {-->
-<!--  isNew = true-->
-<!--  editForm.value = {-->
-<!--    sampleId: '',-->
-<!--    tissueId: '',-->
-<!--    rollId: '',-->
-<!--    sliceId: '',-->
-<!--    blockId: '',-->
-<!--    channels: 0,-->
-<!--    needles: 0,-->
-<!--    status: 'Initial'-->
-<!--  }-->
-<!--  editDialogVisible.value = true-->
-<!--}-->
-
-<!--// 6. 预览/编辑数据项-->
-<!--function handleViewEdit(row) {-->
-<!--  isNew = false-->
-<!--  editForm.value = { ...row }-->
-<!--  editDialogVisible.value = true-->
-<!--}-->
-
-<!--async function saveSampleData() {-->
-<!--  if (isNew) {-->
-<!--    // POST到后端新建-->
-<!--    rawData.value.push({ ...editForm.value })-->
-<!--    ElMessage.success('New sample added.')-->
-<!--  } else {-->
-<!--    // 编辑后更新-->
-<!--    const index = rawData.value.findIndex(item =>-->
-<!--        item.sampleId === editForm.value.sampleId &&-->
-<!--        item.tissueId === editForm.value.tissueId &&-->
-<!--        item.rollId === editForm.value.rollId &&-->
-<!--        item.sliceId === editForm.value.sliceId &&-->
-<!--        item.blockId === editForm.value.blockId-->
-<!--    )-->
-<!--    if (index > -1) {-->
-<!--      rawData.value.splice(index, 1, { ...editForm.value })-->
-<!--      ElMessage.success('Sample updated.')-->
-<!--    }-->
-<!--  }-->
-<!--  editDialogVisible.value = false-->
-<!--}-->
-
-<!--// 5. cache & inspect 上传原始数据（这里仅在全局按钮模拟）-->
-<!--function handleGlobalCache() {-->
-<!--  ElMessage.info('Global cache action.')-->
-<!--}-->
-
-<!--function handleGlobalInspect() {-->
-<!--  ElMessage.info('Global inspect action.')-->
-<!--}-->
-
-<!--// function handleGlobalUpload() {-->
-<!--//   ElMessage.info('Global upload action.')-->
-<!--// }-->
-
-<!--// Perfusion和Bright field相关-->
-<!--function uploadPerfusion(row) {-->
-<!--  console.log('Upload perfusion table for:', row)-->
-<!--  // 上传成功后更新状态为imaged(示例)-->
-<!--  row.status = 'imaged'-->
-<!--}-->
-<!--function downloadPerfusion(row) {-->
-<!--  console.log('Download perfusion table for:', row)-->
-<!--}-->
-<!--function showBrightField(row) {-->
-<!--  console.log('Show bright field data for:', row)-->
-<!--}-->
-
-<!--// 9. 打开imaging dialog-->
-<!--function openImagingDialog(row) {-->
-<!--  console.log('Open imaging dialog for:', row)-->
-<!--  showImagingDialog.value = true-->
-<!--  fetchImagingRecords()-->
-<!--}-->
-
-<!--function closeImagingDialog() {-->
-<!--  showImagingDialog.value = false-->
-<!--  selectedImagingIds.value = []-->
-<!--}-->
-
-<!--// 模拟获取imaging信息-->
-<!--function fetchImagingRecords() {-->
-<!--  imagingRecords.value = [-->
-<!--    {-->
-<!--      id: 1,-->
-<!--      producer: 'xxx',-->
-<!--      status: 'imaged',-->
-<!--      imaged: true,-->
-<!--      marked: true-->
-<!--    },-->
-<!--    {-->
-<!--      id: 2,-->
-<!--      producer: 'yyy',-->
-<!--      status: 'marked',-->
-<!--      imaged: true,-->
-<!--      marked: false-->
-<!--    }-->
-<!--  ]-->
-<!--}-->
-
-<!--// 10. 图像块表单的预览、编辑和下载功能-->
-<!--function viewEditBlock(img) {-->
-<!--  imagingBlockForm.value = { ...img }-->
-<!--  imagingBlockDialogVisible.value = true-->
-<!--}-->
-
-<!--function saveImagingBlock() {-->
-<!--  // 保存编辑后的block-->
-<!--  const index = imagingRecords.value.findIndex(record => record.id === imagingBlockForm.value.id)-->
-<!--  if (index > -1) {-->
-<!--    imagingRecords.value.splice(index, 1, { ...imagingBlockForm.value })-->
-<!--    ElMessage.success('Imaging block updated.')-->
-<!--  } else {-->
-<!--    imagingRecords.value.push({ ...imagingBlockForm.value })-->
-<!--    ElMessage.success('Imaging block added.')-->
-<!--  }-->
-<!--  imagingBlockDialogVisible.value = false-->
-<!--}-->
-
-<!--function downloadImagingBlock() {-->
-<!--  console.log('Download imaging block data for:', imagingBlockForm.value)-->
-<!--}-->
-
-<!--// MIP, imaging data, metadata, somas, injection matched table等功能-->
-<!--function imageMIP(img) {-->
-<!--  console.log('Image MIP:', img)-->
-<!--}-->
-<!--function showImagingData(img) {-->
-<!--  console.log('Show imaging data:', img)-->
-<!--}-->
-<!--function showMetadata(img) {-->
-<!--  console.log('Show metadata:', img)-->
-<!--}-->
-<!--function showSomas(img) {-->
-<!--  console.log('Show Somas (APO):', img)-->
-<!--}-->
-<!--function showInjectionMatchedTable(img) {-->
-<!--  console.log('Show injection matched table:', img)-->
-<!--}-->
-<!--function toCell(img) {-->
-<!--  console.log('To cell action:', img)-->
-<!--  // 若imaged和marked都为true，才可执行此操作-->
-<!--}-->
-
-<!--// 11. imaging info dialog中的new和delete-->
-<!--function newImagingRecord() {-->
-<!--  // 新增空的imaging record-->
-<!--  imagingRecords.value.push({-->
-<!--    id: Date.now(),-->
-<!--    producer: '',-->
-<!--    status: 'Initial',-->
-<!--    imaged: false,-->
-<!--    marked: false-->
-<!--  })-->
-<!--}-->
-
-<!--function deleteImagingRecords() {-->
-<!--  if (selectedImagingIds.value.length === 0) {-->
-<!--    ElMessage.warning('No records selected.')-->
-<!--    return-->
-<!--  }-->
-<!--  imagingRecords.value = imagingRecords.value.filter(record => !selectedImagingIds.value.includes(record.id))-->
-<!--  selectedImagingIds.value = []-->
-<!--  imagingSelectAll.value = false-->
-<!--  ElMessage.success('Selected imaging records deleted.')-->
-<!--}-->
-
-<!--// 全选/反选-->
-<!--function toggleSelectAllImaging() {-->
-<!--  if (imagingSelectAll.value) {-->
-<!--    selectedImagingIds.value = imagingRecords.value.map(r => r.id)-->
-<!--  } else {-->
-<!--    selectedImagingIds.value = []-->
-<!--  }-->
-<!--}-->
-<!--</script>-->
-
-<!--<style scoped>-->
-<!--.container {-->
-<!--  padding: 16px;-->
-<!--  font-family: sans-serif;-->
-<!--}-->
-
-<!--.search-bar {-->
-<!--  background: #fff;-->
-<!--  padding: 16px;-->
-<!--  border-radius: 8px;-->
-<!--}-->
-
-<!--.search-fields {-->
-<!--  display: flex;-->
-<!--  gap: 16px;-->
-<!--  margin-bottom: 8px;-->
-<!--  flex-wrap: wrap;-->
-<!--}-->
-
-<!--.search-field {-->
-<!--  display: flex;-->
-<!--  flex-direction: column;-->
-<!--}-->
-
-<!--.btn {-->
-<!--  border: none;-->
-<!--  border-radius: 6px;-->
-<!--  padding: 6px 12px;-->
-<!--  cursor: pointer;-->
-<!--  margin: 4px;-->
-<!--  background: #ddd;-->
-<!--}-->
-
-<!--.new-btn {-->
-<!--  background: #f99;-->
-<!--}-->
-
-<!--.data-table {-->
-<!--  width: 100%;-->
-<!--  border-collapse: collapse;-->
-<!--  margin-top: 16px;-->
-<!--}-->
-
-<!--.data-table th, .data-table td {-->
-<!--  border: 1px solid #ccc;-->
-<!--  padding: 8px;-->
-<!--  text-align: left;-->
-<!--}-->
-
-<!--.external-actions {-->
-<!--  margin-top: 10px;-->
-<!--}-->
-
-<!--.cache-btn {-->
-<!--  background: #9f9;-->
-<!--}-->
-
-<!--.inspect-btn {-->
-<!--  background: #9ff;-->
-<!--}-->
-
-<!--.upload-btn {-->
-<!--  background: #9f9;-->
-<!--}-->
-
-<!--.imaging-info-btn {-->
-<!--  background: #9ef;-->
-<!--}-->
-
-<!--.new-injection-section {-->
-<!--  margin-top: 16px;-->
-<!--  display: flex;-->
-<!--  align-items: center;-->
-<!--}-->
-
-<!--/* dialog styling由el-dialog提供基本样式，这里扩展内部表格、按钮布局 */-->
-<!--.dialog-content {-->
-<!--  padding: 16px;-->
-<!--}-->
-
-<!--.delete-btn {-->
-<!--  background: #f66;-->
-<!--}-->
-
-<!--.imaging-map-section {-->
-<!--  margin: 16px 0;-->
-<!--}-->
-
-<!--.imaging-table {-->
-<!--  width: 100%;-->
-<!--  border-collapse: collapse;-->
-<!--}-->
-
-<!--.imaging-table th, .imaging-table td {-->
-<!--  border: 1px solid #999;-->
-<!--  padding: 8px;-->
-<!--  text-align: left;-->
-<!--}-->
-<!--</style>-->
