@@ -1,7 +1,7 @@
 <template>
   <el-card class="search-box-card" shadow="hover">
     <el-collapse v-model="isExpanded">
-      <el-collapse-item name="1">å
+      <el-collapse-item name="1">
         <template #title>
           <span class="search-title">Search</span>
         </template>

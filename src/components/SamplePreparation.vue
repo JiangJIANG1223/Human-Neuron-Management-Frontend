@@ -2,15 +2,15 @@
   <div class="container">
     <SearchPreparation @search="receiveData" />
 
-    <div style="display: flex; justify-content: space-between; align-items: center;">
-      <div class="new-injection-section">
+    <div style="display: flex; justify-content: space-between;">
+      <div>
         <el-tooltip content="新建注射记录表">
-          <button class="btn new-btn" @click="handleNew">New</button>
+          <el-button type="primary" @click="handleNew">New</el-button>
         </el-tooltip>
       </div>
 
       <!-- 表单外的操作按钮：Cache, Inspect -->
-      <el-button class="btn cache-btn" @click="openInjectionFilesDialog">Injection Files</el-button>
+      <el-button type="primary" @click="openInjectionFilesDialog">Injection Files</el-button>
     </div>
 
     <!-- 数据表格区域 -->
@@ -26,7 +26,7 @@
         <th>Needles</th>
         <th>Status</th>
         <th>Injection info</th>
-        <th>Perfusion / Brightfield</th>
+        <th>Injection files</th>
         <th>Imaging info</th>
       </tr>
       </thead>
@@ -41,15 +41,19 @@
         <td>{{ row.needles }}</td>
         <td>{{ row.status }}</td>
         <td>
-          <button class="btn small-btn" @click="handleViewEdit(row)">View / Edit</button>
+          <el-button type="primary" @click="handleViewEdit(row)">View / Edit</el-button>
         </td>
         <td>
-          <button class="btn" @click="uploadPerfusion(row)">Upload</button>
-          <button class="btn" @click="downloadPerfusion(row)">Download</button>
-          <button class="btn" @click="showBrightField(row)">Bright field data</button>
+          <el-tooltip
+            content="replace the injection file"
+          >
+            <el-button type="primary" class="btn" @click="uploadInjection(row)">Upload</el-button>
+          </el-tooltip>
+          <el-button type="primary" class="btn" @click="downloadInjection(row)">Download</el-button>
+          <el-button type="primary" class="btn" @click="uploadBrightField(row)">Bright field data</el-button>
         </td>
         <td>
-          <button class="btn imaging-info-btn" @click="openImagingDialog(row)">Imaging info</button>
+          <el-button type="primary" @click="openImagingDialog(row)">Imaging info</el-button>
         </td>
       </tr>
       </tbody>
@@ -207,9 +211,9 @@
             </td>
             <td>
               <button class="btn" @click="showImagingData(img)">Imaging data</button>
-              <button class="btn" @click="showMetadata(img)">Metadata</button>
-              <button class="btn" @click="showSomas(img)">Somas (APO)</button>
-              <button class="btn" @click="showInjectionMatchedTable(img)">Injection matched table</button>
+              <button class="btn" @click="uploadImagingMetadata(img)">Metadata</button>
+              <button class="btn" @click="uploadImagingMarker(img)">Soma</button>
+              <button class="btn" @click="uploadImagingMatchTable(img)">Injection matched table</button>
             </td>
             <td>
               <button class="btn" @click="toCell(img)" :disabled="!(img.status === 'imaged' && img.marked)">To cell</button>
@@ -247,6 +251,88 @@
       </template>
     </el-dialog>
 
+    <!-- Imaging Info upload Dialog -->
+    <el-dialog title="Upload Imaging Metadata" v-model="imagingMetadataDialogVisible" width="50%">
+      <el-form label-width="150px">
+        <el-upload
+            class="upload-demo"
+            drag
+            :multiple="true"
+            :file-list="metadataFilesList"
+            :before-upload="validateMetadataFile"
+            :on-change="handleMetadataFilesChange"
+            :on-remove="handleMetadataFilesRemove"
+            :auto-upload="false"
+        >
+          <i class="el-icon-upload"></i>
+          <div class="el-upload__text">Drag .xlsx or .xml file here or click to upload</div>
+        </el-upload>
+      </el-form>
+        <!-- Upload Button -->
+      <template #footer>
+        <el-button
+            type="primary"
+            @click="uploadImagingMetadataFiles"
+            :disabled="metadataFilesList.length === 0">
+          Upload
+        </el-button>
+        <el-button @click="imagingMetadataDialogVisible = false">Cancel</el-button>
+      </template>
+    </el-dialog>
+    <el-dialog title="Upload Imaging Marker" v-model="imagingMarkerDialogVisible" width="50%">
+      <el-form label-width="150px">
+        <el-upload
+            class="upload-demo"
+            drag
+            :multiple="true"
+            :file-list="metadataFilesList"
+            :before-upload="validateMarkerFile"
+            :on-change="handleMarkerFilesChange"
+            :on-remove="handleMarkerFilesRemove"
+            :auto-upload="false"
+        >
+          <i class="el-icon-upload"></i>
+          <div class="el-upload__text">Drag .marker or .apo file here or click to upload</div>
+        </el-upload>
+      </el-form>
+      <!-- Upload Button -->
+      <template #footer>
+        <el-button
+            type="primary"
+            @click="uploadImagingMarkerFiles"
+            :disabled="markerFilesList.length === 0">
+          Upload
+        </el-button>
+        <el-button @click="imagingMarkerDialogVisible = false">Cancel</el-button>
+      </template>
+    </el-dialog>
+    <el-dialog title="Upload Imaging Match Table" v-model="imagingMatchTableDialogVisible" width="50%">
+      <el-form label-width="150px">
+        <el-upload
+            class="upload-demo"
+            drag
+            :multiple="true"
+            :file-list="matchTableFilesList"
+            :before-upload="validateMatchTable"
+            :on-change="handleMatchTableChange"
+            :on-remove="handleMatchTableRemove"
+            :auto-upload="false"
+        >
+          <i class="el-icon-upload"></i>
+          <div class="el-upload__text">Drag PTRS(B)(N)-matched.csv file here or click to upload</div>
+        </el-upload>
+      </el-form>
+      <!-- Upload Button -->
+      <template #footer>
+        <el-button
+            type="primary"
+            @click="uploadImagingMatchTableFiles"
+            :disabled="matchTableFilesList.length === 0">
+          Upload
+        </el-button>
+        <el-button @click="imagingMatchTableDialogVisible = false">Cancel</el-button>
+      </template>
+    </el-dialog>
     <el-dialog title="Injection Files" v-model="injectionFilesDialogVisible" width="50%">
       <!-- 存储/下载/上传(入库) 功能选择 -->
       <el-radio-group v-model="selectedTab" @change="handleTabChange">
@@ -255,7 +341,7 @@
       </el-radio-group>
 
       <!-- 存储部分 -->
-      <div v-if="selectedTab === 'storage'">
+      <div v-show="selectedTab === 'storage'">
         <el-form label-width="120px">
           <el-form-item label="Subfolder Name" style="margin-top: 18px; margin-bottom: 15px;">
             <el-input v-model="subfolderName" placeholder="Enter subfolder name, for example, P00001-T001-R001-S001"></el-input>
@@ -284,7 +370,7 @@
       </div>
 
       <!-- 下载部分 -->
-      <div v-if="selectedTab === 'download'">
+      <div v-show="selectedTab === 'download'">
         <!-- 确保 folderList 加载完成后再渲染 el-select -->
         <el-select v-if="folderList.length > 0" v-model="selectedFolder" placeholder="Select folder" style="margin-top: 18px; margin-bottom: 15px;">
           <el-option
@@ -389,11 +475,22 @@ const imagingBlockForm = ref({
 let imagingFileList = ref([]);
 
 const injectionFilesDialogVisible = ref(false);
-let selectedTab = 'download'; // 默认选择上传功能
+let selectedTab = ref('storage'); // 默认选择上传功能
 let subfolderName = ref(''); // 用户输入的子文件夹名称
 let folderList = ref([]);  // 存储已有子文件夹列表，确保其初始值为一个空数组
 let selectedFolder = ref(null);  // 选中的文件夹，初始化为 null
 let injectionFilesList = ref([]);  // 存储上传的文件列表
+
+/*
+upload imaging files
+*/
+const imagingMetadataDialogVisible = ref(false);
+let metadataFilesList = ref([]);  // 存储已有子文件夹列表，确保其初始值为一个空数组
+const imagingMarkerDialogVisible = ref(false);
+let markerFilesList = ref([]);  // 存储已有子文件夹列表，确保其初始值为一个空数组
+const imagingMatchTableDialogVisible = ref(false);
+let matchTableFilesList = ref([]);  // 存储已有子文件夹列表，确保其初始值为一个空数组
+
 
 // 初始化获取数据
 onMounted(() => {
@@ -424,14 +521,14 @@ function beforeUpload(file) {
   const isCSVOrImage = fileExtension === 'csv' || file.type.startsWith('image/');
 
   if (!isCSVOrImage) {
-    this.$message.error('Only CSV and image file are allowed.');
+    ElMessage.error('Only CSV and image file are allowed.');
     return false;
   }
   return true;
 }
 
 function handleTabChange() {
-  console.log('selectedTab: ', selectedTab);
+  console.log('selectedTab: ', selectedTab.value);
 }
   // 文件变更处理
 function handleFilesChange(file, filesList) {
@@ -447,7 +544,7 @@ function validateSubfolderName() {
 async function uploadAllFiles() {
   console.log('uploadAllFiles');
   if (!subfolderName.value) {
-    this.$message.error('Please enter a subfolder name. Expected format: P00001-T001-R001-S001(-B1)');
+    ElMessage.error('Please enter a subfolder name. Expected format: P00001-T001-R001-S001(-B1)');
     return;
   }
   console.log('uploadAllFiles',subfolderName.value);
@@ -459,7 +556,7 @@ async function uploadAllFiles() {
   console.log('uploadAllFiles',subfolderName.value);
   const formData = new FormData();
   formData.append('subfolder_name', subfolderName.value);  // 用户输入的子文件夹名称
-  console.log(formData.values)
+  console.log(formData)
   injectionFilesList.value.forEach(file => {
     formData.append('files', file.raw);  // 将每个文件添加到 formData 中
   });
@@ -470,12 +567,12 @@ async function uploadAllFiles() {
     }
   })
       .then(() => {
-        this.$message.success('Files stored successfully.');
+        ElMessage.success('Files stored successfully.');
         injectionFilesList = [];  // 清空文件列表
         subfolderName = '';    // 清空 subfolderName
       })
       .catch(() => {
-        this.$message.error('Failed to store files. Please try again.');
+        ElMessage.error('Failed to store files. Please try again.');
       });
 }
 // 新建数据项
@@ -529,7 +626,7 @@ function parseFileName(file) {
 }
 async function uploadCSVToDB() {
   if (fileList.value.length === 0) {
-    this.$message.error('Please select a CSV file.');
+    ElMessage.error('Please select a CSV file.');
     return;
   }
 
@@ -539,7 +636,7 @@ async function uploadCSVToDB() {
   // 检查文件是否已经存在
   // const checkFileExistsResponse = await axios.get(`/api/check_csv_exists?filename=${file.name}`);
   // if (checkFileExistsResponse.data.exists) {
-  //   this.$message.error('File with the same name already exists. Upload aborted!');
+  //   ElMessage.error('File with the same name already exists. Upload aborted!');
   //   return;
   // }
 
@@ -550,39 +647,39 @@ async function uploadCSVToDB() {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
       .then(() => {
-        this.$message.success('CSV uploaded to database successfully');
+        ElMessage.success('CSV uploaded to database successfully');
         fileList = [];
       })
       .catch(error => {
         if (error.response && error.response.data.detail) {
           const errorMessage = error.response.data.detail;
           if (errorMessage.includes('CSV file must contain an ID column.')) {
-            this.$message.error('File must contain an ID column. Please check and re-upload.');
+            ElMessage.error('File must contain an ID column. Please check and re-upload.');
           } else if (errorMessage.includes('File name does not match its ID column')) {
-            this.$message.error('File name and its ID column do not match. Please check and re-upload.');
+            ElMessage.error('File name and its ID column do not match. Please check and re-upload.');
           } else if (errorMessage.includes('Missing columns:')) {
-            this.$message.error(`Missing columns: ${errorMessage.split('Missing columns: ')[1]}`);
+            ElMessage.error(`Missing columns: ${errorMessage.split('Missing columns: ')[1]}`);
           } else if (errorMessage.includes('Columns with missing values:')) {
-            this.$message.error(`Columns with missing values: ${errorMessage.split('Columns with missing values: ')[1]}`);
+            ElMessage.error(`Columns with missing values: ${errorMessage.split('Columns with missing values: ')[1]}`);
           } else if (errorMessage.includes('No matching sample found')) {
-            this.$message.error('No matching sample found. Please check and re-upload.');
+            ElMessage.error('No matching sample found. Please check and re-upload.');
           } else if (errorMessage.includes('Abnormal value in dye_name column.')) {
-            this.$message.error('Abnormal value in dye_name column. Please check and re-upload.');
+            ElMessage.error('Abnormal value in dye_name column. Please check and re-upload.');
           } else if (errorMessage.includes('Concentration contents error.')) {
-            this.$message.error('Concentration contents error. Please check and re-upload.');
+            ElMessage.error('Concentration contents error. Please check and re-upload.');
           } else if (errorMessage.includes('Unable to convert date format.')) {
-            this.$message.error('Unable to convert date format. Please check and re-upload.');
+            ElMessage.error('Unable to convert date format. Please check and re-upload.');
             // } else if (errorMessage.includes('Database insertion failed')) {
-            //   this.$message.error('Table format error. Please check and re-upload.');
+            //   ElMessage.error('Table format error. Please check and re-upload.');
           } else if (errorMessage.includes('Database insertion failed:')) {
-            this.$message.error(`Database insertion failed. ${errorMessage.split('Database insertion failed:')[1]}`);
+            ElMessage.error(`Database insertion failed. ${errorMessage.split('Database insertion failed:')[1]}`);
           } else if (errorMessage.includes('Error processing CSV file:')) {
-            this.$message.error(`Error processing CSV file. ${errorMessage.split('Error processing CSV file:')[1]}`);
+            ElMessage.error(`Error processing CSV file. ${errorMessage.split('Error processing CSV file:')[1]}`);
           } else {
-            this.$message.error(errorMessage);
+            ElMessage.error(errorMessage);
           }
         } else {
-          this.$message.error('CSV upload to database failed.');
+          ElMessage.error('CSV upload to database failed.');
         }
       });
 }
@@ -651,20 +748,21 @@ function openInjectionFilesDialog() {
 }
 function loadFolders() {
   api.get('/folders').then(response => {
+    console.log('folders response',response);
     folderList.value = response.data.folders;
     if (folderList.value.length > 0) {
-      selectedFolder = folderList.value[0];  // 设置默认选中的文件夹
+      selectedFolder.value = folderList.value[0];  // 设置默认选中的文件夹
     }
   });
 }
 // 下载文件夹
 function downloadFolder() {
-  if (!this.selectedFolder) {
-    this.$message.error('Please select a folder.');
+  if (!selectedFolder.value) {
+    ElMessage.error('Please select a folder.');
     return;
   }
   // 请求下载文件夹，设置 responseType 为 'blob'
-  axios.get(`/api/download_folder?folder=${this.selectedFolder}`, {
+  api.get(`/download_folder?folder=${selectedFolder.value}`, {
     responseType: 'blob'  // 必须设置 responseType 为 'blob' 来接收二进制数据
   })
       .then(response => {
@@ -677,7 +775,7 @@ function downloadFolder() {
         // 创建一个临时链接并点击，触发下载
         const link = document.createElement('a');
         link.href = downloadUrl;
-        link.setAttribute('download', `${this.selectedFolder}.zip`); // 设置下载文件名
+        link.setAttribute('download', `${selectedFolder.value}.zip`); // 设置下载文件名
         document.body.appendChild(link);
         link.click();
 
@@ -685,47 +783,98 @@ function downloadFolder() {
         window.URL.revokeObjectURL(downloadUrl);
         document.body.removeChild(link);
 
-        this.$message.success('Folder downloaded successfully');
+        ElMessage.success('Folder downloaded successfully');
       })
       .catch(() => {
-        this.$message.error('Failed to download folder');
+        ElMessage.error('Failed to download folder');
       });
 }
 // Perfusion 和 Bright Field 相关操作
-function uploadPerfusion(row) {
-  console.log('Upload perfusion table for:', row);
+function uploadInjection(row) {
+  console.log('Upload injection file for:', row);
   // 上传成功后更新状态为 imaged (示例)
-  updateSampleStatus(row.id, 'imaged');
+  // updateSampleStatus(row.id, 'imaged');
 }
 
-function downloadPerfusion(row) {
+function downloadInjection(row) {
   console.log('Download perfusion table for:', row);
 }
 
-function showBrightField(row) {
+function uploadBrightField(row) {
   console.log('Show bright field data for:', row);
 }
 
-// 更新样本状态
-async function updateSampleStatus(sampleId, status) {
+async function updateImagingRecordStatus(imagingId, newStatus) {
   try {
-    const sample = rawData.value.find(item => item.id === sampleId);
-    if (!sample) {
-      ElMessage.error('Sample not found.');
+    const record = imagingRecords.value.find((rec) => rec.imaging_id === imagingId);
+    if (!record) {
+      ElMessage.error("Imaging record not found.");
       return;
     }
-    const updatedSample = { ...sample, status };
-    const response = await api.put(`/sample_preparation/${sampleId}`, updatedSample);
-    const index = rawData.value.findIndex(item => item.id === sampleId);
-    if (index > -1) {
-      rawData.value.splice(index, 1, response.data);
-      ElMessage.success(`Sample status updated to ${status}.`);
-    }
+
+    // 更新记录的状态
+    record.status = newStatus;
+
+    // 后端同步状态
+    await api.put(`/imaging_records/${record.sample_preparation_id}/${imagingId}`, record);
+
+    // 检查是否需要更新 Sample 的状态
+    await checkAndUpdateSampleStatus(record.sample_preparation_id);
+
+    ElMessage.success(`Imaging record ${imagingId} updated to ${newStatus}.`);
   } catch (error) {
-    console.error('Error updating sample status:', error);
-    ElMessage.error('Failed to update sample status.');
+    ElMessage.error(`Failed to update imaging record ${imagingId} to ${newStatus}.`);
   }
 }
+
+async function checkAndUpdateSampleStatus(sampleId) {
+  try {
+    const sample = rawData.value.find((s) => s.id === sampleId);
+    if (!sample) {
+      ElMessage.error("Sample not found.");
+      return;
+    }
+
+    const allStatuses = sample.imaging_records.map((record) => record.status);
+
+    // 按状态检测顺序：imaged -> marked -> inserted -> matched
+    const orderedStatuses = ["imaged", "marked", "inserted", "matched"];
+    for (const status of orderedStatuses) {
+      if (allStatuses.every((recStatus) => recStatus === status)) {
+        // 更新样本状态为当前状态
+        sample.status = status;
+
+        // 后端同步状态
+        await api.put(`/sample_preparation/${sampleId}`,sample);
+
+        ElMessage.success(`Sample ${sampleId} updated to ${status}.`);
+        return;
+      }
+    }
+  } catch (error) {
+    ElMessage.error(`Failed to update sample ${sampleId} status.`);
+  }
+}
+// 更新样本状态
+// async function updateSampleStatus(sampleId, status) {
+//   try {
+//     const sample = rawData.value.find(item => item.id === sampleId);
+//     if (!sample) {
+//       ElMessage.error('Sample not found.');
+//       return;
+//     }
+//     const updatedSample = { ...sample, status };
+//     const response = await api.put(`/sample_preparation/${sampleId}`, updatedSample);
+//     const index = rawData.value.findIndex(item => item.id === sampleId);
+//     if (index > -1) {
+//       rawData.value.splice(index, 1, response.data);
+//       ElMessage.success(`Sample status updated to ${status}.`);
+//     }
+//   } catch (error) {
+//     console.error('Error updating sample status:', error);
+//     ElMessage.error('Failed to update sample status.');
+//   }
+// }
 
 // 打开 imaging dialog
 function openImagingDialog(row) {
@@ -786,7 +935,6 @@ function parseImagingFileName(file) {
   return false; // 停止自动上传
 }
 function handleImagingFileChange(file) {
-  console.log(file);
   imagingFileList.value = [file];
   parseImagingFileName(file);
 }
@@ -820,15 +968,15 @@ async function uploadImagingInfoFiles() {
   const formData = new FormData();
   formData.append('metadata_file', imagingFileList.value[0].raw);
   console.log('formdata',formData)
-  api.post('/upload_imaging_info_new', formData, {
+  api.post('/upload_imaging_metadata', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
       .then(response => {
         // Handle success
-        this.$message.success('File uploaded successfully');
+        ElMessage.success('File uploaded successfully');
         const uploadedFiles = response.data.uploaded_files || [];
         // Remove uploaded files from the file list
-        this.metadataFilesList = this.metadataFilesList.filter(file => !uploadedFiles.includes(file.name));
+        imagingFileList.value = imagingFileList.value.filter(file => !uploadedFiles.includes(file.name));
       })
       .catch(error => {
         // let error = 'Files upload failed';
@@ -839,7 +987,90 @@ async function uploadImagingInfoFiles() {
             // errorMessage = error.response.data.detail.error || 'Files upload failed';
           }
         }
-        // this.$message.error(errorMessage);
+        // ElMessage.error(errorMessage);
+      });
+}
+
+async function uploadImagingMetadataFiles() {
+  const formData = new FormData();
+  formData.append('metadata_file', metadataFilesList.value[0].raw);
+  console.log('formdata',formData)
+  api.post('/upload_imaging_metadata', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+      .then(response => {
+        // Handle success
+        ElMessage.success('File uploaded successfully');
+        const uploadedFiles = response.data.uploaded_files || [];
+        // Remove uploaded files from the file list
+        metadataFilesList.value = metadataFilesList.value.filter(file => !uploadedFiles.includes(file.name));
+      })
+      .catch(error => {
+        // let error = 'Files upload failed';
+        if (error.response && error.response.data.detail) {
+          if (typeof error.response.data.detail === 'string') {
+            // errorMessage = error.response.data.detail;
+          } else if (typeof error.response.data.detail === 'object') {
+            // errorMessage = error.response.data.detail.error || 'Files upload failed';
+          }
+        }
+        // ElMessage.error(errorMessage);
+      });
+}
+
+async function uploadImagingMarkerFiles() {
+  const formData = new FormData();
+  formData.append('marker_file', markerFilesList.value[0].raw);
+  console.log('formData',formData)
+  api.post('/upload_imaging_marker', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+      .then(response => {
+        // Handle success
+        ElMessage.success('File uploaded successfully');
+        const uploadedFiles = response.data.uploaded_files || [];
+        // Remove uploaded files from the file list
+        markerFilesList.value = markerFilesList.value.filter(file => !uploadedFiles.includes(file.name));
+        updateImagingRecordStatus(imagingBlockForm.value.imaging_id, "marked");
+      })
+      .catch(error => {
+        let errorMessage = 'Files upload failed';
+        if (error.response && error.response.data.detail) {
+          if (typeof error.response.data.detail === 'string') {
+            errorMessage = error.response.data.detail;
+          } else if (typeof error.response.data.detail === 'object') {
+            errorMessage = error.response.data.detail.error || 'Files upload failed';
+          }
+        }
+        ElMessage.error(errorMessage);
+      });
+}
+
+async function uploadImagingMatchTableFiles() {
+  const formData = new FormData();
+  formData.append('matchtable_file', matchTableFilesList.value[0].raw);
+  console.log('formdata',formData)
+  api.post('/upload_imaging_match_table', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+      .then(response => {
+        // Handle success
+        ElMessage.success('File uploaded successfully');
+        const uploadedFiles = response.data.uploaded_files || [];
+        // Remove uploaded files from the file list
+        matchTableFilesList.value = matchTableFilesList.value.filter(file => !uploadedFiles.includes(file.name));
+        updateImagingRecordStatus(imagingBlockForm.value.imaging_id, "matched");
+      })
+      .catch(error => {
+        // let error = 'Files upload failed';
+        if (error.response && error.response.data.detail) {
+          if (typeof error.response.data.detail === 'string') {
+            // errorMessage = error.response.data.detail;
+          } else if (typeof error.response.data.detail === 'object') {
+            // errorMessage = error.response.data.detail.error || 'Files upload failed';
+          }
+        }
+        // ElMessage.error(errorMessage);
       });
 }
 // 新建 Imaging Record
@@ -929,6 +1160,7 @@ async function deleteImagingRecords() {
     ElMessage.error('Failed to delete imaging records.');
   }
 }
+
 // 保存 imaging records 到后端
 async function saveImagingRecords() {
   if (!currentSampleId.value) {
@@ -1010,17 +1242,92 @@ function showImagingData(img) {
   console.log('Show imaging data:', img);
 }
 
-function showMetadata(img) {
-  console.log('Show metadata:', img);
+function uploadImagingMetadata(img) {
+  imagingBlockForm.value = { ...img };
+  imagingMetadataDialogVisible.value = true;
 }
 
-function showSomas(img) {
-  console.log('Show Somas (APO):', img);
+function uploadImagingMarker(img) {
+  imagingBlockForm.value = { ...img };
+  imagingMarkerDialogVisible.value = true;
 }
 
-function showInjectionMatchedTable(img) {
-  console.log('Show injection matched table:', img);
+function uploadImagingMatchTable(img) {
+  imagingBlockForm.value = { ...img };
+  imagingMatchTableDialogVisible.value = true;
 }
+
+function validateMetadataFile(file) {
+  const fileExtension = file.name.split('.').pop().toLowerCase();
+  const fileNamePattern = /^P\d{5}-T\d{3}-R\d{3}-S\d{3}(-B\d)?(-\d+)?-[A-Z]{2,3}\.(xlsx|xml)$/;
+
+  if (!fileNamePattern.test(file.name)) {
+    this.$message.error('Invalid filename format for metadata file. Expected format: P00001-T001-R001-S001(-B1)(-1)-NAME.xlsx or .xml');
+    return false;
+  }
+
+  if (!['xlsx', 'xml'].includes(fileExtension)) {
+    this.$message.error('Only .xlsx or .xml files are allowed for metadata upload.');
+    return false;
+  }
+  return true;
+}
+
+function validateMarkerFile(file) {
+  const fileExtension = file.name.split('.').pop().toLowerCase();
+  const fileNamePattern = /^P\d{5}-T\d{3}-R\d{3}-S\d{3}(-B\d)?(-\d+)?\.marker$/;
+
+  if (!fileNamePattern.test(file.name)) {
+    this.$message.error('Invalid filename format for marker file. Expected format: P00001-T001-R001-S001(-B1)(-1).marker');
+    return false;
+  }
+
+  if (fileExtension !== 'marker') {
+    this.$message.error('Only .marker files are allowed for marker upload.');
+    return false;
+  }
+  return true;
+}
+
+function validateMatchTable(file) {
+  const fileExtension = file.name.split('.').pop().toLowerCase();
+  const fileNamePattern = /^P\d{5}-T\d{3}-R\d{3}-S\d{3}(-B\d)?(-\d+)?(-[A-Za-z_]{2,10})?-matched\.csv$/;
+
+  if (!fileNamePattern.test(file.name)) {
+    this.$message.error('Invalid filename format for annotation file. Expected format: P00001-T001-R001-S001(-B1)(-1).apo');
+    return false;
+  }
+
+  if (fileExtension !== 'apo') {
+    this.$message.error('Only .apo files are allowed for annotation upload.');
+    return false;
+  }
+  return true;
+}
+
+function handleMetadataFilesChange(file) {
+  metadataFilesList.value = [file];
+}
+
+function handleMetadataFilesRemove() {
+  metadataFilesList.value = [];
+}
+
+function handleMarkerFilesChange(file) {
+  markerFilesList.value = [file];
+}
+
+function handleMarkerFilesRemove() {
+  markerFilesList.value = [];
+}
+function handleMatchTableChange(file) {
+  matchTableFilesList.value = [file];
+}
+
+function handleMatchTableRemove() {
+  matchTableFilesList.value = [];
+}
+
 
 function toCell(img) {
   if (img.status === 'imaged' && img.marked) {
@@ -1062,7 +1369,6 @@ function toCell(img) {
   padding: 6px 12px;
   cursor: pointer;
   margin: 4px;
-  background: #ddd;
 }
 
 .new-btn {
@@ -1098,9 +1404,6 @@ function toCell(img) {
   background: #9f9;
 }
 
-.imaging-info-btn {
-  background: #9ef;
-}
 
 .new-injection-section {
   margin-top: 16px;

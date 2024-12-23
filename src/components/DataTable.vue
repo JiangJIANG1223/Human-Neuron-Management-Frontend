@@ -1243,6 +1243,39 @@ export default {
         swc_v1:'', //
       };
     },
+    uploadAllFiles() {
+      if (!this.subfolderName) {
+        this.$message.error('Please enter a subfolder name. Expected format: P00001-T001-R001-S001(-B1)');
+        return;
+      }
+
+      // 检查subfolderName格式
+      if (!this.validateSubfolderName()) {
+        this.$message.error('Please check the subfolder name.');
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('subfolder_name', this.subfolderName);  // 用户输入的子文件夹名称
+
+      this.filesList.forEach(file => {
+        formData.append('files', file.raw);  // 将每个文件添加到 formData 中
+      });
+
+      axios.post('/api/upload_files', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+          .then((response) => {
+            this.$message.success('Files stored successfully.');
+            this.filesList = [];  // 清空文件列表
+            this.subfolderName = '';    // 清空 subfolderName
+          })
+          .catch((error) => {
+            this.$message.error('Failed to store files. Please try again.');
+          });
+    },
 
     openRecordBookDialog() {
       this.recordBookDialogVisible = true;
@@ -1336,39 +1369,7 @@ export default {
     },
 
     // 批量上传文件
-    uploadAllFiles() {
-      if (!this.subfolderName) {
-        this.$message.error('Please enter a subfolder name. Expected format: P00001-T001-R001-S001(-B1)');
-        return;
-      }
 
-      // 检查subfolderName格式
-      if (!this.validateSubfolderName()) {
-        this.$message.error('Please check the subfolder name.');
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append('subfolder_name', this.subfolderName);  // 用户输入的子文件夹名称
-
-      this.filesList.forEach(file => {
-        formData.append('files', file.raw);  // 将每个文件添加到 formData 中
-      });
-
-      axios.post('/api/upload_files', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      })
-      .then((response) => {
-        this.$message.success('Files stored successfully.');
-        this.filesList = [];  // 清空文件列表
-        this.subfolderName = '';    // 清空 subfolderName
-      })
-      .catch((error) => {
-        this.$message.error('Failed to store files. Please try again.');
-      });
-    },
 
     // 加载已有子文件夹
     loadFolders() {
