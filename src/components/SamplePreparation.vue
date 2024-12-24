@@ -1099,6 +1099,7 @@ async function newImagingRecord() {
     }
 
     ElMessage.success('New imaging record added.');
+    uploadImageDialogVisible.value = false;
   } catch (error) {
     console.error('Error creating imaging record:', error);
     ElMessage.error('Failed to create imaging record.');
