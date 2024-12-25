@@ -5,12 +5,12 @@
     <div style="display: flex; justify-content: space-between;">
       <div>
         <el-tooltip content="新建注射记录表">
-          <el-button type="primary" @click="handleNew">New</el-button>
+          <el-button type="primary" class="btn" @click="handleNew">New</el-button>
         </el-tooltip>
       </div>
 
       <!-- 表单外的操作按钮：Cache, Inspect -->
-      <el-button type="primary" @click="openInjectionFilesDialog">Injection Files</el-button>
+      <el-button type="primary" class="btn" @click="openInjectionFilesDialog">Injection Files</el-button>
     </div>
 
     <!-- 数据表格区域 -->
@@ -41,7 +41,7 @@
         <td>{{ row.needles }}</td>
         <td>{{ row.status }}</td>
         <td>
-          <el-button type="primary" @click="handleViewEdit(row)">View / Edit</el-button>
+          <el-button type="primary" class="btn" @click="handleViewEdit(row)">View / Edit</el-button>
         </td>
         <td>
           <el-tooltip
@@ -53,7 +53,7 @@
           <el-button type="primary" class="btn" @click="uploadBrightField(row)">Bright field data</el-button>
         </td>
         <td>
-          <el-button type="primary" @click="openImagingDialog(row)">Imaging info</el-button>
+          <el-button type="primary" class="btn" @click="openImagingDialog(row)">Imaging info</el-button>
         </td>
       </tr>
       </tbody>
@@ -133,7 +133,7 @@
 
       <!-- Dialog Footer -->
       <template #footer>
-        <el-button @click="cancelUpload">Cancel</el-button>
+        <el-button type="danger" class="btn" @click="cancelUpload">Cancel</el-button>
         <el-button type="primary" @click="saveUploadedData">Save</el-button>
       </template>
     </el-dialog>
@@ -168,19 +168,21 @@
 
     <el-dialog
         v-model="showImagingDialog"
-        title="Imaging Records"
         width="80%"
         :close-on-click-modal="false"
         :close-on-press-escape="false"
         @close="closeImagingDialog"
     >
+      <template #title>
+        Imaging Records of {{ currentSampleId }}
+      </template>
       <div class="dialog-content">
         <div class="new-injection-section">
           <el-tooltip content="create a new Imaging Record">
-            <button class="btn new-btn" @click="handleNewImagingRecord">New</button>
+            <el-button type="primary" class="btn" @click="handleNewImagingRecord">New</el-button>
           </el-tooltip>
           <el-tooltip content="upload and show Imaging map">
-            <button class="btn new-btn" @click="uploadImagingMap">Imaging map</button>
+            <el-button type="primary" class="btn" @click="uploadImagingMap">Imaging map</el-button>
           </el-tooltip>
         </div>
         <table class="imaging-table">
@@ -223,8 +225,8 @@
         </table>
       </div>
       <template #footer>
-        <button class="btn delete-btn" @click="deleteImagingRecords">Delete</button>
-        <button class="btn" @click="saveImagingRecords">Save</button>
+        <el-button type="danger" class="btn" @click="deleteImagingRecords">Delete</el-button>
+        <el-button type="primary" class="btn" @click="saveImagingRecords">Save</el-button>
       </template>
     </el-dialog>
 
@@ -386,6 +388,67 @@
         <el-button @click="injectionFilesDialogVisible = false">Cancel</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+        v-model="showImagingMapDialog"
+        width="80%"
+    >
+      <template #title>
+        Imaging Map of {{ currentSampleId }}
+      </template>
+      <div v-if="imagingMapUrl" style="display: flex;justify-content: center;align-items: center;">
+        <!-- 显示已上传图片 -->
+        <img :src="imagingMapUrl" alt="Uploaded Image" />
+      </div>
+
+      <div v-else>
+        <p>No image found. Please upload an image.</p>
+      </div>
+
+      <template #footer>
+        <el-button type="primary" class="btn" @click="openUploadImagingMapFile">Upload</el-button>
+      </template>
+    </el-dialog>
+    <el-dialog title="Upload Imaging Metadata" v-model="uploadImagingMapVisible" width="50%">
+      <el-form label-width="150px">
+        <el-upload
+            class="upload-demo"
+            drag
+            :file-list="imagingMapFilesList"
+            :on-change="handleimagingMapChange"
+            :on-remove="handleimagingMapRemove"
+            :auto-upload="false"
+        >
+          <i class="el-icon-upload"></i>
+          <div class="el-upload__text">Drag files here or <em>click to upload</em></div>
+          <div class="el-upload__tip">File types: PNG, JPEG, JPG</div>
+        </el-upload>
+      </el-form>
+      <template #footer>
+        <el-button
+            type="primary"
+            @click="uploadImagingMapFiles"
+            :disabled="imagingMapFilesList.length === 0">
+          Upload
+        </el-button>
+        <el-button @click="uploadImagingMapVisible = false">Cancel</el-button>
+      </template>
+    </el-dialog>
+    <el-dialog
+        v-model="showImagingMIP"
+        width="80%"
+    >
+      <template #title>
+        Imaging MIP of {{ currentSampleId }}
+      </template>
+      <div v-if="imagingMIPUrl" style="display: flex;justify-content: center;align-items: center;">
+        <!-- 显示已上传图片 -->
+        <img :src="imagingMIPUrl" style="width: 70%;"/>
+      </div>
+      <div v-else>
+        <p>No MIP found. Please upload an image.</p>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -491,6 +554,12 @@ let markerFilesList = ref([]);  // 存储已有子文件夹列表，确保其初
 const imagingMatchTableDialogVisible = ref(false);
 let matchTableFilesList = ref([]);  // 存储已有子文件夹列表，确保其初始值为一个空数组
 
+const showImagingMapDialog = ref(false);
+let imagingMapFilesList = ref([]);
+let imagingMapUrl = ref('');
+const uploadImagingMapVisible = ref(false);
+const showImagingMIP = ref(false);
+let imagingMIPUrl = ref('')
 
 // 初始化获取数据
 onMounted(() => {
@@ -880,7 +949,6 @@ async function checkAndUpdateSampleStatus(sampleId) {
 function openImagingDialog(row) {
   console.log('Open imaging dialog for:', row);
   showImagingDialog.value = true;
-
   // 拼接 currentSampleId 的基础部分
   currentSampleId.value = `${row.sampleId}-${row.tissueId}-${row.rollId}-${row.sliceId}`;
 
@@ -888,7 +956,7 @@ function openImagingDialog(row) {
   if (row.blockId && row.blockId !== '--') {
     currentSampleId.value += `-${row.blockId}`;
   }
-
+  fetchImagingMap()
   console.log('Generated currentSampleId:', currentSampleId.value); // 打印调试信息
   currentSampleIndex.value = row.id
   console.log('currentSampleIndex',currentSampleIndex.value)
@@ -1236,7 +1304,9 @@ function downloadImagingBlock() {
 
 // MIP, imaging data, metadata, somas, injection matched table 等功能
 function imageMIP(img) {
-  console.log('Image MIP:', img);
+  showImagingMIP.value = true;
+  fetchImagingMIP(img.imaging_id);
+  console.log('Image MIP:', img.imaging_id);
 }
 
 function showImagingData(img) {
@@ -1329,6 +1399,80 @@ function handleMatchTableRemove() {
   matchTableFilesList.value = [];
 }
 
+function uploadImagingMap() {
+  showImagingMapDialog.value = true;
+}
+function handleimagingMapChange(file) {
+  imagingMapFilesList.value = [file];
+}
+function handleimagingMapRemove() {
+  imagingMapFilesList.value = [];
+}
+function openUploadImagingMapFile() {
+  uploadImagingMapVisible.value = true;
+}
+
+function uploadImagingMapFiles() {
+  const formData = new FormData();
+  formData.append('imaging_map_file', imagingMapFilesList.value[0].raw);
+  api.post('/upload_imaging_map', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+      .then(response => {
+        // Handle success
+        ElMessage.success('File uploaded successfully');
+        const uploadedFiles = response.data.uploaded_files || [];
+        // Remove uploaded files from the file list
+        imagingMapFilesList.value = imagingMapFilesList.value.filter(file => !uploadedFiles.includes(file.name));
+        // updateImagingRecordStatus(imagingBlockForm.value.imaging_id, "matched");
+        fetchImagingMap()
+      })
+      .catch(error => {
+        // let error = 'Files upload failed';
+        if (error.response && error.response.data.detail) {
+          if (typeof error.response.data.detail === 'string') {
+            // errorMessage = error.response.data.detail;
+          } else if (typeof error.response.data.detail === 'object') {
+            // errorMessage = error.response.data.detail.error || 'Files upload failed';
+          }
+        }
+        // ElMessage.error(errorMessage);
+      });
+
+}
+async function fetchImagingMap() {
+  try {
+    const response = await api.get(`/get_imaging_map/${currentSampleId.value}`, {
+      responseType: "blob", // 确保返回的是 Blob 数据
+    });
+
+    // 检查响应是否是 Blob 类型
+    if (response.data && response.data instanceof Blob) {
+      imagingMapUrl.value = URL.createObjectURL(response.data); // 创建 Blob URL
+    } else {
+      console.error("Invalid response data");
+    }
+  } catch (error) {
+    console.error("Failed to fetch image:", error);
+  }
+}
+
+async function fetchImagingMIP(imaging_id) {
+  try {
+    const response = await api.get(`/get_imaging_mip/${currentSampleId.value}/${imaging_id}`, {
+      responseType: "blob", // 确保返回的是 Blob 数据
+    });
+
+    // 检查响应是否是 Blob 类型
+    if (response.data && response.data instanceof Blob) {
+      imagingMIPUrl.value = URL.createObjectURL(response.data); // 创建 Blob URL
+    } else {
+      console.error("Invalid response data");
+    }
+  } catch (error) {
+    console.error("Failed to fetch image:", error);
+  }
+}
 
 function toCell(img) {
   if (img.status === 'imaged' && img.marked) {
@@ -1372,9 +1516,6 @@ function toCell(img) {
   margin: 4px;
 }
 
-.new-btn {
-  background: #f99;
-}
 
 .data-table {
   width: 100%;
@@ -1407,19 +1548,16 @@ function toCell(img) {
 
 
 .new-injection-section {
-  margin-top: 16px;
+  margin-bottom: 8px;
   display: flex;
   align-items: center;
 }
 
 /* dialog styling由 el-dialog 提供基本样式，这里扩展内部表格、按钮布局 */
 .dialog-content {
-  padding: 16px;
+  padding: 0;
 }
 
-.delete-btn {
-  background: #f66;
-}
 
 .imaging-map-section {
   margin: 16px 0;
