@@ -47,7 +47,7 @@
           <el-tooltip
             content="replace the injection file"
           >
-            <el-button type="primary" class="btn" @click="uploadInjection(row)">Upload</el-button>
+            <el-button type="primary" class="btn" :disabled="(row.imaging_records.length > 0)" @click="uploadInjection(row)">Upload</el-button>
           </el-tooltip>
           <el-button type="primary" class="btn" @click="downloadInjection(row)">Download</el-button>
           <el-button type="primary" class="btn" @click="uploadBrightField(row)">Bright field data</el-button>
@@ -212,7 +212,7 @@
               <button class="btn" @click="imageMIP(img)">Image MIP</button>
             </td>
             <td>
-              <button class="btn" @click="showImagingData(img)">Imaging data</button>
+              <button class="btn" @click="uploadImagingData(img)">Imaging data</button>
               <button class="btn" @click="uploadImagingMetadata(img)">Metadata</button>
               <button class="btn" @click="uploadImagingMarker(img)">Soma</button>
               <button class="btn" @click="uploadImagingMatchTable(img)">Injection matched table</button>
@@ -398,7 +398,7 @@
       </template>
       <div v-if="imagingMapUrl" style="display: flex;justify-content: center;align-items: center;">
         <!-- 显示已上传图片 -->
-        <img :src="imagingMapUrl" alt="Uploaded Image" />
+        <img :src="imagingMapUrl" alt="Uploaded Image" style="width: 70%;"/>
       </div>
 
       <div v-else>
@@ -406,7 +406,7 @@
       </div>
 
       <template #footer>
-        <el-button type="primary" class="btn" @click="openUploadImagingMapFile">Upload</el-button>
+        <el-button type="primary" class="btn" @click="openUploadImagingMapFile">Upload/Replace</el-button>
       </template>
     </el-dialog>
     <el-dialog title="Upload Imaging Metadata" v-model="uploadImagingMapVisible" width="50%">
@@ -449,12 +449,87 @@
         <p>No MIP found. Please upload an image.</p>
       </div>
     </el-dialog>
+    <el-dialog title="Upload Imaging Data" v-model="uploadImagingDataVisible" width="50%">
+      <el-form label-width="150px">
+        <el-upload
+            class="upload-demo"
+            drag
+            :file-list="imagingDataFilesList"
+            :on-change="handleimagingDataChange"
+            :on-remove="handleimagingDataRemove"
+            :auto-upload="false"
+        >
+          <i class="el-icon-upload"></i>
+          <div class="el-upload__text">Drag files here or <em>click to upload</em></div>
+          <div class="el-upload__tip">File types: h5, v3draw, v3dpbd</div>
+        </el-upload>
+      </el-form>
+      <template #footer>
+        <el-button
+            type="primary"
+            @click="uploadImagingDataFiles"
+            :disabled="imagingDataFilesList.length === 0">
+          Upload
+        </el-button>
+        <el-button @click="uploadImagingDataVisible = false">Cancel</el-button>
+      </template>
+    </el-dialog>
+    <el-dialog title="Upload Bright Field Data" v-model="uploadBrightFieldDataVisible" width="50%">
+      <el-form label-width="150px">
+        <el-upload
+            class="upload-demo"
+            drag
+            :file-list="brightFieldDataFilesList"
+            :on-change="handleBrightFieldDataChange"
+            :on-remove="handleBrightFieldDataRemove"
+            :auto-upload="false"
+        >
+          <i class="el-icon-upload"></i>
+          <div class="el-upload__text">Drag files here or <em>click to upload</em></div>
+          <div class="el-upload__tip">File types: tiff</div>
+        </el-upload>
+      </el-form>
+      <template #footer>
+        <el-button
+            type="primary"
+            @click="uploadBrightFieldDataFiles"
+            :disabled="brightFieldDataFilesList.length === 0">
+          Upload
+        </el-button>
+        <el-button @click="uploadBrightFieldDataVisible = false">Cancel</el-button>
+      </template>
+    </el-dialog>
+    <el-dialog title="Upload Injection FIle" v-model="uploadInjectionFileVisible" width="50%">
+      <el-form label-width="150px">
+        <el-upload
+            class="upload-demo"
+            drag
+            :file-list="fileList"
+            :on-change="handleFileChange"
+            :on-remove="handleFileRemove"
+            :auto-upload="false"
+        >
+          <i class="el-icon-upload"></i>
+          <div class="el-upload__text">Drag files here or <em>click to upload</em></div>
+          <div class="el-upload__tip">File types: csv</div>
+        </el-upload>
+      </el-form>
+      <template #footer>
+        <el-button
+            type="primary"
+            @click="uploadInjectionFile"
+            :disabled="fileList.length === 0">
+          Upload
+        </el-button>
+        <el-button @click="uploadInjectionFileVisible = false">Cancel</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox} from 'element-plus';
 import axios from 'axios';
 import SearchPreparation from './Search_for_Preparation.vue';
 
@@ -543,6 +618,7 @@ let subfolderName = ref(''); // 用户输入的子文件夹名称
 let folderList = ref([]);  // 存储已有子文件夹列表，确保其初始值为一个空数组
 let selectedFolder = ref(null);  // 选中的文件夹，初始化为 null
 let injectionFilesList = ref([]);  // 存储上传的文件列表
+const uploadInjectionFileVisible = ref(false);
 
 /*
 upload imaging files
@@ -553,6 +629,10 @@ const imagingMarkerDialogVisible = ref(false);
 let markerFilesList = ref([]);  // 存储已有子文件夹列表，确保其初始值为一个空数组
 const imagingMatchTableDialogVisible = ref(false);
 let matchTableFilesList = ref([]);  // 存储已有子文件夹列表，确保其初始值为一个空数组
+const uploadImagingDataVisible = ref(false);
+let imagingDataFilesList = ref([]);  // 存储已有子文件夹列表，确保其初始值为一个空数组
+const uploadBrightFieldDataVisible = ref(false);
+let brightFieldDataFilesList = ref([]);  // 存储已有子文件夹列表，确保其初始值为一个空数组
 
 const showImagingMapDialog = ref(false);
 let imagingMapFilesList = ref([]);
@@ -571,6 +651,7 @@ async function fetchData() {
   try {
     const response = await api.get('/sample_preparation');
     rawData.value = response.data;
+    console.log('rawdata',rawData);
   } catch (error) {
     console.error('Error fetching data:', error);
     ElMessage.error('Failed to fetch data.');
@@ -693,64 +774,79 @@ function parseFileName(file) {
   console.log(editForm.value)
   return false; // 停止自动上传
 }
-async function uploadCSVToDB() {
+async function uploadInjectionFile() {
   if (fileList.value.length === 0) {
     ElMessage.error('Please select a CSV file.');
     return;
   }
-
   const file =fileList.value[0].raw;
-
-
   // 检查文件是否已经存在
-  // const checkFileExistsResponse = await axios.get(`/api/check_csv_exists?filename=${file.name}`);
-  // if (checkFileExistsResponse.data.exists) {
-  //   ElMessage.error('File with the same name already exists. Upload aborted!');
-  //   return;
-  // }
-
-  const formData = new FormData();
-  formData.append('file', file);
-
-  api.post('/upload_csv_to_db', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  })
-      .then(() => {
-        ElMessage.success('CSV uploaded to database successfully');
-        fileList = [];
-      })
-      .catch(error => {
-        if (error.response && error.response.data.detail) {
-          const errorMessage = error.response.data.detail;
-          if (errorMessage.includes('CSV file must contain an ID column.')) {
-            ElMessage.error('File must contain an ID column. Please check and re-upload.');
-          } else if (errorMessage.includes('File name does not match its ID column')) {
-            ElMessage.error('File name and its ID column do not match. Please check and re-upload.');
-          } else if (errorMessage.includes('Missing columns:')) {
-            ElMessage.error(`Missing columns: ${errorMessage.split('Missing columns: ')[1]}`);
-          } else if (errorMessage.includes('Columns with missing values:')) {
-            ElMessage.error(`Columns with missing values: ${errorMessage.split('Columns with missing values: ')[1]}`);
-          } else if (errorMessage.includes('No matching sample found')) {
-            ElMessage.error('No matching sample found. Please check and re-upload.');
-          } else if (errorMessage.includes('Abnormal value in dye_name column.')) {
-            ElMessage.error('Abnormal value in dye_name column. Please check and re-upload.');
-          } else if (errorMessage.includes('Concentration contents error.')) {
-            ElMessage.error('Concentration contents error. Please check and re-upload.');
-          } else if (errorMessage.includes('Unable to convert date format.')) {
-            ElMessage.error('Unable to convert date format. Please check and re-upload.');
-            // } else if (errorMessage.includes('Database insertion failed')) {
-            //   ElMessage.error('Table format error. Please check and re-upload.');
-          } else if (errorMessage.includes('Database insertion failed:')) {
-            ElMessage.error(`Database insertion failed. ${errorMessage.split('Database insertion failed:')[1]}`);
-          } else if (errorMessage.includes('Error processing CSV file:')) {
-            ElMessage.error(`Error processing CSV file. ${errorMessage.split('Error processing CSV file:')[1]}`);
-          } else {
-            ElMessage.error(errorMessage);
+  const checkFileExistsResponse = await api.get(`/check_sample_file_exists?filename=${file.name}`);
+  if (checkFileExistsResponse.data.exists) {
+    try {
+      // 显示确认对话框
+      await ElMessageBox.confirm(
+          'File with the same name already exists. Do you want to overwrite it?',
+          {
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'No',
+            type: 'warning',
           }
-        } else {
-          ElMessage.error('CSV upload to database failed.');
-        }
-      });
+      );
+      console.log('User confirmed overwrite. Proceeding with upload...');
+      ElMessageBox.close()
+      const formData = new FormData();
+      formData.append('file', file);
+
+      api.post('/upload_injection_file', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+        .then(() => {
+          ElMessage.success('CSV uploaded to database successfully');
+          fileList.value = [];
+          uploadInjectionFileVisible.value = false;
+        })
+        .catch(error => {
+          if (error.response && error.response.data.detail) {
+            const errorMessage = error.response.data.detail;
+            if (errorMessage.includes('CSV file must contain an ID column.')) {
+              ElMessage.error('File must contain an ID column. Please check and re-upload.');
+            } else if (errorMessage.includes('File name does not match its ID column')) {
+              ElMessage.error('File name and its ID column do not match. Please check and re-upload.');
+            } else if (errorMessage.includes('Missing columns:')) {
+              ElMessage.error(`Missing columns: ${errorMessage.split('Missing columns: ')[1]}`);
+            } else if (errorMessage.includes('Columns with missing values:')) {
+              ElMessage.error(`Columns with missing values: ${errorMessage.split('Columns with missing values: ')[1]}`);
+            } else if (errorMessage.includes('No matching sample found')) {
+              ElMessage.error('No matching sample found. Please check and re-upload.');
+            } else if (errorMessage.includes('Abnormal value in dye_name column.')) {
+              ElMessage.error('Abnormal value in dye_name column. Please check and re-upload.');
+            } else if (errorMessage.includes('Concentration contents error.')) {
+              ElMessage.error('Concentration contents error. Please check and re-upload.');
+            } else if (errorMessage.includes('Unable to convert date format.')) {
+              ElMessage.error('Unable to convert date format. Please check and re-upload.');
+              // } else if (errorMessage.includes('Database insertion failed')) {
+              //   ElMessage.error('Table format error. Please check and re-upload.');
+            } else if (errorMessage.includes('Database insertion failed:')) {
+              ElMessage.error(`Database insertion failed. ${errorMessage.split('Database insertion failed:')[1]}`);
+            } else if (errorMessage.includes('Error processing CSV file:')) {
+              ElMessage.error(`Error processing CSV file. ${errorMessage.split('Error processing CSV file:')[1]}`);
+            } else {
+              ElMessage.error(errorMessage);
+            }
+          } else {
+            ElMessage.error('CSV upload to database failed.');
+          }
+        });
+      return 'continue'
+    } catch (error) {
+      // 用户选择“取消”，终止上传
+      console.log('User canceled overwrite. Aborting upload.');
+      uploadDialogVisible.value = false
+      ElMessageBox.close()
+      return 'finish'
+    }
+  }
 }
 
 async function saveUploadedData() {
@@ -769,17 +865,24 @@ async function saveUploadedData() {
   formData.append('channels', editForm.value.channels);
   formData.append('needles', editForm.value.needles);
   formData.append('status', editForm.value.status);
+  let result = await uploadInjectionFile()
+  if(result === 'success'){
+    try {
 
-  try {
-    await uploadCSVToDB()
-    const newSample = { ...editForm.value, imaging_records: [] }; // 新建时 imaging_records 为空
-    const response = await api.post('/sample_preparation', newSample);
-    rawData.value.push(response.data);
-    ElMessage.success('New sample added.');
-  } catch (error) {
-    console.error('Error saving data:', error);
-    ElMessage.error('Failed to save data.');
+      const newSample = { ...editForm.value, imaging_records: [] }; // 新建时 imaging_records 为空
+      const response = await api.post('/sample_preparation', newSample);
+      rawData.value.push(response.data);
+      ElMessage.success('New sample added.');
+    } catch (error) {
+      console.error('Error saving data:', error);
+      ElMessage.error('Failed to save data.');
+    }
   }
+  else {
+    ElMessage.info("file already exists.");
+    return;
+  }
+
 }
 
 // 取消上传
@@ -859,18 +962,54 @@ function downloadFolder() {
       });
 }
 // Perfusion 和 Bright Field 相关操作
-function uploadInjection(row) {
-  console.log('Upload injection file for:', row);
-  // 上传成功后更新状态为 imaged (示例)
-  // updateSampleStatus(row.id, 'imaged');
+function uploadInjection() {
+  uploadInjectionFileVisible.value = true;
 }
 
-function downloadInjection(row) {
-  console.log('Download perfusion table for:', row);
+async function downloadInjection(row) {
+  let bNumber = '';
+  if (row.blockId !== "--") {
+    bNumber = `-${row.blockId}`;
+  }
+  let sample_preparation_id = `${row.sampleId}-${row.tissueId}-${row.rollId}-${row.sliceId}${bNumber}`;
+  try {
+    // 使用 Axios 请求文件
+    const response = await api.get(`/get_injection_file/${sample_preparation_id}`, {
+      responseType: "blob", // 确保返回二进制数据
+    });
+
+    // 从响应头获取文件名
+    const contentDisposition = response.headers["content-disposition"];
+    const fileName = contentDisposition
+        ? contentDisposition.match(/filename="?(.+)"?/)[1]
+        : `${sample_preparation_id}.csv`;
+
+    // 创建 Blob 并触发下载
+    const blob = new Blob([response.data], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", fileName); // 设置文件名
+    document.body.appendChild(link);
+    link.click();
+
+    // 清理资源
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error("Failed to download file:", error);
+    this.$message.error("Failed to download file.");
+  }
 }
 
 function uploadBrightField(row) {
-  console.log('Show bright field data for:', row);
+  currentSampleId.value = `${row.sampleId}-${row.tissueId}-${row.rollId}-${row.sliceId}`;
+  // 判断 Block ID 是否为 '--'，如果不是，则添加到末尾
+  if (row.blockId && row.blockId !== '--') {
+    currentSampleId.value += `-${row.blockId}`;
+  }
+  console.log('current sample id', currentSampleId.value);
+  uploadBrightFieldDataVisible.value = true;
 }
 
 async function updateImagingRecordStatus(imagingId, newStatus) {
@@ -1309,8 +1448,9 @@ function imageMIP(img) {
   console.log('Image MIP:', img.imaging_id);
 }
 
-function showImagingData(img) {
-  console.log('Show imaging data:', img);
+function uploadImagingData(img) {
+  imagingBlockForm.value = { ...img };
+  uploadImagingDataVisible.value = true;
 }
 
 function uploadImagingMetadata(img) {
@@ -1411,6 +1551,18 @@ function handleimagingMapRemove() {
 function openUploadImagingMapFile() {
   uploadImagingMapVisible.value = true;
 }
+function handleimagingDataChange(file) {
+  imagingDataFilesList.value = [file];
+}
+function handleimagingDataRemove() {
+  imagingDataFilesList.value = [];
+}
+function handleBrightFieldDataChange(file) {
+  brightFieldDataFilesList.value = [file];
+}
+function handleBrightFieldDataRemove() {
+  brightFieldDataFilesList.value = [];
+}
 
 function uploadImagingMapFiles() {
   const formData = new FormData();
@@ -1467,11 +1619,66 @@ async function fetchImagingMIP(imaging_id) {
     if (response.data && response.data instanceof Blob) {
       imagingMIPUrl.value = URL.createObjectURL(response.data); // 创建 Blob URL
     } else {
+      imagingMIPUrl.value = '';
       console.error("Invalid response data");
     }
   } catch (error) {
     console.error("Failed to fetch image:", error);
   }
+}
+
+async function uploadImagingDataFiles() {
+  const formData = new FormData();
+  formData.append('imaging_data_file', imagingDataFilesList.value[0].raw);
+  await api.post(`/upload_imaging_data/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+      .then(response => {
+        // Handle success
+        ElMessage.success('File uploaded successfully');
+        const uploadedFiles = response.data.uploaded_files || [];
+        // Remove uploaded files from the file list
+        imagingMapFilesList.value = imagingMapFilesList.value.filter(file => !uploadedFiles.includes(file.name));
+      })
+      .catch(error => {
+        // let error = 'Files upload failed';
+        if (error.response && error.response.data.detail) {
+          if (typeof error.response.data.detail === 'string') {
+            // errorMessage = error.response.data.detail;
+          } else if (typeof error.response.data.detail === 'object') {
+            // errorMessage = error.response.data.detail.error || 'Files upload failed';
+          }
+        }
+        // ElMessage.error(errorMessage);
+      });
+
+}
+
+async function uploadBrightFieldDataFiles() {
+  const formData = new FormData();
+  formData.append('bright_field_data_file', brightFieldDataFilesList.value[0].raw);
+  await api.post(`/upload_bright_field_fata/${currentSampleId.value}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+      .then(response => {
+        // Handle success
+        ElMessage.success('File uploaded successfully');
+        const uploadedFiles = response.data.uploaded_files || [];
+        // Remove uploaded files from the file list
+        brightFieldDataFilesList.value = brightFieldDataFilesList.value.filter(file => !uploadedFiles.includes(file.name));
+      })
+      .catch(error => {
+        // let error = 'Files upload failed';
+        if (error.response && error.response.data.detail) {
+          if (typeof error.response.data.detail === 'string') {
+            // errorMessage = error.response.data.detail;
+          } else if (typeof error.response.data.detail === 'object') {
+            // errorMessage = error.response.data.detail.error || 'Files upload failed';
+          }
+        }
+        // ElMessage.error(errorMessage);
+      });
+
 }
 
 function toCell(img) {
