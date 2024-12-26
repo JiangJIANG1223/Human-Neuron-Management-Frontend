@@ -161,7 +161,7 @@
 
       <!-- Dialog Footer -->
       <template #footer>
-        <el-button @click="cancelUpload">Cancel</el-button>
+        <el-button @click="cancelUploadImage">Cancel</el-button>
         <el-button type="primary" @click="newImagingRecord">Save</el-button>
       </template>
     </el-dialog>
@@ -847,6 +847,53 @@ async function uploadInjectionFile() {
       return 'finish'
     }
   }
+  else {
+    ElMessageBox.close()
+    const formData = new FormData();
+    formData.append('file', file);
+
+    api.post('/upload_injection_file', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+        .then(() => {
+          ElMessage.success('CSV uploaded to database successfully');
+          fileList.value = [];
+          uploadInjectionFileVisible.value = false;
+        })
+        .catch(error => {
+          if (error.response && error.response.data.detail) {
+            const errorMessage = error.response.data.detail;
+            if (errorMessage.includes('CSV file must contain an ID column.')) {
+              ElMessage.error('File must contain an ID column. Please check and re-upload.');
+            } else if (errorMessage.includes('File name does not match its ID column')) {
+              ElMessage.error('File name and its ID column do not match. Please check and re-upload.');
+            } else if (errorMessage.includes('Missing columns:')) {
+              ElMessage.error(`Missing columns: ${errorMessage.split('Missing columns: ')[1]}`);
+            } else if (errorMessage.includes('Columns with missing values:')) {
+              ElMessage.error(`Columns with missing values: ${errorMessage.split('Columns with missing values: ')[1]}`);
+            } else if (errorMessage.includes('No matching sample found')) {
+              ElMessage.error('No matching sample found. Please check and re-upload.');
+            } else if (errorMessage.includes('Abnormal value in dye_name column.')) {
+              ElMessage.error('Abnormal value in dye_name column. Please check and re-upload.');
+            } else if (errorMessage.includes('Concentration contents error.')) {
+              ElMessage.error('Concentration contents error. Please check and re-upload.');
+            } else if (errorMessage.includes('Unable to convert date format.')) {
+              ElMessage.error('Unable to convert date format. Please check and re-upload.');
+              // } else if (errorMessage.includes('Database insertion failed')) {
+              //   ElMessage.error('Table format error. Please check and re-upload.');
+            } else if (errorMessage.includes('Database insertion failed:')) {
+              ElMessage.error(`Database insertion failed. ${errorMessage.split('Database insertion failed:')[1]}`);
+            } else if (errorMessage.includes('Error processing CSV file:')) {
+              ElMessage.error(`Error processing CSV file. ${errorMessage.split('Error processing CSV file:')[1]}`);
+            } else {
+              ElMessage.error(errorMessage);
+            }
+          } else {
+            ElMessage.error('CSV upload to database failed.');
+          }
+        });
+    return 'continue'
+  }
 }
 
 async function saveUploadedData() {
@@ -866,7 +913,7 @@ async function saveUploadedData() {
   formData.append('needles', editForm.value.needles);
   formData.append('status', editForm.value.status);
   let result = await uploadInjectionFile()
-  if(result === 'success'){
+  if(result === 'continue'){
     try {
 
       const newSample = { ...editForm.value, imaging_records: [] }; // 新建时 imaging_records 为空
@@ -889,6 +936,10 @@ async function saveUploadedData() {
 function cancelUpload() {
   uploadDialogVisible.value = false;
   resetForm();
+}
+function cancelUploadImage() {
+  uploadImageDialogVisible.value = false;
+  imagingFileList.value = [];
 }
 
 // 保存样本数据（新建或更新）
