@@ -42,15 +42,6 @@
                 </el-select>
               </el-form-item>
             </el-col>
-            <!-- <el-col :span="5">
-              <el-form-item label="Lucifer Yellow IHC">
-                <el-select v-model="searchQuery.immunohistochemistry" placeholder="Chose Lucifer Yellow IHC">
-                  <el-option label="None" value=""></el-option>
-                  <el-option label="Yes" value="1"></el-option>
-                  <el-option label="No" value="0"></el-option>
-                </el-select>
-              </el-form-item>
-            </el-col> -->
             <el-col :span="6">
               <el-form-item label="Slice Status">
                 <el-select v-model="searchQuery.source" placeholder="Chose Sample Source" @change="handleSourceChange">
