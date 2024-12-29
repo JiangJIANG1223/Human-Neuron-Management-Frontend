@@ -913,24 +913,46 @@ async function saveUploadedData() {
   formData.append('channels', editForm.value.channels);
   formData.append('needles', editForm.value.needles);
   formData.append('status', editForm.value.status);
-  let result = await uploadInjectionFile()
-  if(result === 'continue'){
-    try {
+  try {
+    const newSample = { ...editForm.value, imaging_records: [] }; // 新建时 imaging_records 为空
+    const response = await api.post('/sample_preparation', newSample);
 
-      const newSample = { ...editForm.value, imaging_records: [] }; // 新建时 imaging_records 为空
-      const response = await api.post('/sample_preparation', newSample);
+    // 检查响应状态
+    if (response && response.status === 201) {
+      // 成功创建样本
       rawData.value.push(response.data);
       ElMessage.success('New sample added.');
-    } catch (error) {
-      console.error('Error saving data:', error);
-      ElMessage.error('Failed to save data.');
+
+      // 上传 Injection 文件
+      let result = await uploadInjectionFile();
+      if (result === 'continue') {
+        ElMessage.success('Injection file uploaded to database successfully.');
+      } else {
+        ElMessage.error('Upload cancelled.');
+      }
+    } else if (response && response.status === 400) {
+      // 显示服务器返回的错误信息
+      if (response.data && response.data.detail) {
+        ElMessage.error(response.data.detail);
+      } else {
+        ElMessage.error('Bad Request: Invalid data.');
+      }
+    } else {
+      // 未知的错误状态
+      ElMessage.error(`Unexpected status code: ${response.status}`);
+    }
+  } catch (error) {
+    // 捕获网络错误或其他问题
+    if (error.response && error.response.data && error.response.data.detail) {
+      // 显示后端返回的错误信息
+      ElMessage.error(error.response.data.detail);
+    } else if (error.message) {
+      // 显示一般错误信息
+      ElMessage.error(`Error: ${error.message}`);
+    } else {
+      ElMessage.error('An unexpected error occurred. Please try again.');
     }
   }
-  else {
-    ElMessage.info("file already exists.");
-    return;
-  }
-
 }
 
 // 取消上传
