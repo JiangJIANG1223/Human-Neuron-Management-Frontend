@@ -478,6 +478,7 @@
       <el-form label-width="150px">
         <el-upload
             class="upload-demo"
+            multiple
             drag
             :file-list="brightFieldDataFilesList"
             :on-change="handleBrightFieldDataChange"
@@ -1608,8 +1609,8 @@ function handleimagingDataChange(file) {
 function handleimagingDataRemove() {
   imagingDataFilesList.value = [];
 }
-function handleBrightFieldDataChange(file) {
-  brightFieldDataFilesList.value = [file];
+function handleBrightFieldDataChange(file,fileList) {
+  brightFieldDataFilesList.value = fileList;
 }
 function handleBrightFieldDataRemove() {
   brightFieldDataFilesList.value = [];
@@ -1706,9 +1707,18 @@ async function uploadImagingDataFiles() {
 }
 
 async function uploadBrightFieldDataFiles() {
+  if (brightFieldDataFilesList.value.length === 0) {
+    ElMessage.error('No files selected for upload.');
+    return;
+  }
+
   const formData = new FormData();
-  formData.append('bright_field_data_file', brightFieldDataFilesList.value[0].raw);
-  await api.post(`/upload_bright_field_fata/${currentSampleId.value}`, formData, {
+  for (const item of brightFieldDataFilesList.value) {
+    // 普通文件
+    formData.append('bright_field_data_files', item.raw, item.name);
+  }
+
+  await api.post(`/upload_bright_field_data/${currentSampleId.value}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
       .then(response => {
