@@ -2009,28 +2009,56 @@ async function fetchImagingMIP(imaging_id) {
 async function uploadImagingDataFiles() {
   const formData = new FormData();
   formData.append('imaging_data_file', imagingDataFilesList.value[0].raw);
-  await api.post(`/upload_imaging_data/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  })
-      .then(response => {
-        // Handle success
-        ElMessage.success('File uploaded successfully');
-        const uploadedFiles = response.data.uploaded_files || [];
-        // Remove uploaded files from the file list
-        imagingMapFilesList.value = imagingMapFilesList.value.filter(file => !uploadedFiles.includes(file.name));
-      })
-      .catch(error => {
-        // let error = 'Files upload failed';
-        if (error.response && error.response.data.detail) {
-          if (typeof error.response.data.detail === 'string') {
-            // errorMessage = error.response.data.detail;
-          } else if (typeof error.response.data.detail === 'object') {
-            // errorMessage = error.response.data.detail.error || 'Files upload failed';
-          }
-        }
-        // ElMessage.error(errorMessage);
-      });
 
+  try {
+    // 检查文件是否已经存在
+    const checkResponse = await api.get(`/check_imaging_record_file_exists/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`, {
+      params: {
+        filename: imagingDataFilesList.value[0].name,
+      },
+    });
+
+    if (checkResponse.data.exists) {
+      // 如果文件存在，提示用户是否覆盖
+      const confirmOverwrite = await ElMessageBox.confirm(
+          `A file with the name '${imagingDataFilesList.value[0].name}' already exists. Do you want to overwrite it?`,
+          'Confirmation',
+          {
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'No',
+            type: 'warning',
+          }
+      );
+
+      if (confirmOverwrite !== 'confirm') {
+        // 如果用户选择不覆盖，直接返回
+        ElMessage.info('File upload cancelled.');
+        return;
+      }
+    }
+
+    // 如果文件不存在，或者用户选择覆盖，继续上传
+    const response = await api.post(`/upload_imaging_data/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    // 上传成功后的处理逻辑
+    if (response && response.status === 200) {
+      ElMessage.success('File uploaded successfully.');
+      imagingDataFilesList.value = []
+    } else {
+      // 非200状态码的处理
+      ElMessage.error('Failed to upload the file. Unexpected response.');
+    }
+  } catch (error) {
+    // 异常处理逻辑
+    console.error('Error uploading imaging data file:', error);
+    if (error.response && error.response.data && error.response.data.detail) {
+      ElMessage.error(error.response.data.detail);
+    } else {
+      ElMessage.error('Failed to upload the file. Please try again.');
+    }
+  }
 }
 
 async function uploadBrightFieldDataFiles() {
