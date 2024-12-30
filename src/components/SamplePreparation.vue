@@ -848,6 +848,19 @@ async function uploadInjectionFile() {
     return;
   }
   const file =fileList.value[0].raw;
+  console.log('fileList',fileList.value[0])
+  let fileName = fileList.value[0].name
+  let regex = new RegExp(
+        `${currentSampleId.value}\\.csv$`
+  );
+  console.log('Current Sample ID:', currentSampleId.value);
+  console.log('Uploaded File Name:', fileName);
+  if (!regex.test(fileName)) {
+    ElMessage.error(
+        `Invalid file name. Expected format: ${currentSampleId.value}.csv`
+    );
+    return;
+  }
   // 检查文件是否已经存在
   const checkFileExistsResponse = await api.get(`/check_sample_file_exists?filename=${file.name}`);
   if (checkFileExistsResponse.data.exists) {
@@ -978,6 +991,11 @@ async function saveUploadedData() {
   formData.append('sliceId', editForm.value.sliceId);
   formData.append('blockId', editForm.value.blockId);
   formData.append('status', editForm.value.status);
+  currentSampleId.value = `${editForm.value.sampleId}-${editForm.value.tissueId}-${editForm.value.rollId}-${editForm.value.sliceId}`;
+  // 判断 Block ID 是否为 '--'，如果不是，则添加到末尾
+  if (editForm.value.blockId && editForm.value.blockId !== '--') {
+    currentSampleId.value += `-${editForm.value.blockId}`;
+  }
   try {
     const newSample = { ...editForm.value, imaging_records: [] }; // 新建时 imaging_records 为空
     const response = await api.post('/sample_preparation', newSample);
@@ -1641,6 +1659,19 @@ async function newImagingRecord() {
     ElMessage.error('Please select a CSV file.');
     return;
   }
+  let fileName = imagingFileList.value[0].name
+  let regex = new RegExp(
+      `^${currentSampleId.value}(-\\d+)?-[A-Za-z_]{2,10}\\.(xlsx|xml)$`
+  );
+  console.log('Current Sample ID:', currentSampleId.value);
+  console.log('Uploaded File Name:', fileName);
+  if (!regex.test(fileName)) {
+    ElMessage.error(
+        `Invalid file name. Expected format: ${currentSampleId.value}(-N)(-Name).(xlsx/xml)`
+    );
+    return;
+  }
+
   try {
     // 如果没有重复文件或用户确认覆盖，继续创建新记录
     const newRecord = {
@@ -1657,12 +1688,16 @@ async function newImagingRecord() {
       const createdRecord = response.data;
 
       // 本地更新 imagingRecords
-      // imagingRecords.value.push(createdRecord);
+      imagingRecords.value = [...imagingRecords.value, createdRecord];
 
-      // 同时更新 rawData 中对应样本的 imaging_records
+// 同时更新 rawData 中对应样本的 imaging_records
       const sampleIndex = rawData.value.findIndex(sample => sample.id === currentSampleIndex.value);
       if (sampleIndex !== -1) {
-        rawData.value[sampleIndex].imaging_records.push(createdRecord);
+        // 强制替换整个 imaging_records 数组，确保 Vue 响应式更新
+        rawData.value[sampleIndex].imaging_records = [
+          ...rawData.value[sampleIndex].imaging_records,
+          createdRecord
+        ];
       }
 
       ElMessage.success('New imaging record added.');
@@ -2061,40 +2096,79 @@ async function uploadImagingDataFiles() {
   }
 }
 
+// async function uploadBrightFieldDataFiles() {
+//   if (brightFieldDataFilesList.value.length === 0) {
+//     ElMessage.error('No files selected for upload.');
+//     return;
+//   }
+//
+//   const formData = new FormData();
+//   for (const item of brightFieldDataFilesList.value) {
+//     // 普通文件
+//     formData.append('bright_field_data_files', item.raw, item.name);
+//   }
+//
+//   await api.post(`/upload_bright_field_data/${currentSampleId.value}`, formData, {
+//     headers: { 'Content-Type': 'multipart/form-data' }
+//   })
+//       .then(response => {
+//         // Handle success
+//         ElMessage.success('File uploaded successfully');
+//         const uploadedFiles = response.data.uploaded_files || [];
+//         // Remove uploaded files from the file list
+//         brightFieldDataFilesList.value = brightFieldDataFilesList.value.filter(file => !uploadedFiles.includes(file.name));
+//       })
+//       .catch(error => {
+//         // let error = 'Files upload failed';
+//         if (error.response && error.response.data.detail) {
+//           if (typeof error.response.data.detail === 'string') {
+//             // errorMessage = error.response.data.detail;
+//           } else if (typeof error.response.data.detail === 'object') {
+//             // errorMessage = error.response.data.detail.error || 'Files upload failed';
+//           }
+//         }
+//         // ElMessage.error(errorMessage);
+//       });
+//
+// }
 async function uploadBrightFieldDataFiles() {
   if (brightFieldDataFilesList.value.length === 0) {
     ElMessage.error('No files selected for upload.');
     return;
   }
 
-  const formData = new FormData();
-  for (const item of brightFieldDataFilesList.value) {
-    // 普通文件
-    formData.append('bright_field_data_files', item.raw, item.name);
+  try {
+    // 获取灌注表中的 Id 列
+    const response = await api.get(`/get_injection_ids/${currentSampleId.value}`);
+    const idList = response.data;
+
+    // 验证上传文件名是否符合 Id 列中的值
+    for (const file of brightFieldDataFilesList.value) {
+      const fileNameWithoutPrefix = file.name.replace(/^BF_/, '').replace('.tif', '');
+      if (!idList.includes(fileNameWithoutPrefix)) {
+        ElMessage.error(`Invalid file name: ${file.name}. Expected one of: ${idList.join(', ')}`);
+        return;
+      }
+    }
+
+    // 构造表单数据并上传文件
+    const formData = new FormData();
+    for (const item of brightFieldDataFilesList.value) {
+      formData.append('bright_field_data_files', item.raw, item.name);
+    }
+
+    const uploadResponse = await api.post(`/upload_bright_field_data/${currentSampleId.value}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    if (uploadResponse.status === 200) {
+      ElMessage.success('File uploaded successfully');
+      brightFieldDataFilesList.value = []
+    }
+  } catch (error) {
+    console.error('Error uploading bright field data files:', error);
+    ElMessage.error('Failed to upload bright field data files.');
   }
-
-  await api.post(`/upload_bright_field_data/${currentSampleId.value}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  })
-      .then(response => {
-        // Handle success
-        ElMessage.success('File uploaded successfully');
-        const uploadedFiles = response.data.uploaded_files || [];
-        // Remove uploaded files from the file list
-        brightFieldDataFilesList.value = brightFieldDataFilesList.value.filter(file => !uploadedFiles.includes(file.name));
-      })
-      .catch(error => {
-        // let error = 'Files upload failed';
-        if (error.response && error.response.data.detail) {
-          if (typeof error.response.data.detail === 'string') {
-            // errorMessage = error.response.data.detail;
-          } else if (typeof error.response.data.detail === 'object') {
-            // errorMessage = error.response.data.detail.error || 'Files upload failed';
-          }
-        }
-        // ElMessage.error(errorMessage);
-      });
-
 }
 
 function toCell(img) {
