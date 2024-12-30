@@ -459,7 +459,10 @@
         <el-button type="primary" class="btn" @click="openUploadImagingMapFile">Upload/Replace</el-button>
       </template>
     </el-dialog>
-    <el-dialog title="Upload Imaging Metadata" v-model="uploadImagingMapVisible" width="50%">
+    <el-dialog v-model="uploadImagingMapVisible" width="50%">
+      <template #title>
+        Upload Imaging Map of {{ currentSampleId }}
+      </template>
       <el-form label-width="150px">
         <el-upload
             class="upload-demo"
@@ -1001,7 +1004,7 @@ async function saveUploadedData() {
     const response = await api.post('/sample_preparation', newSample);
 
     // 检查响应状态
-    if (response && response.status === 201) {
+    if (response && response.status === 200) {
       // 成功创建样本
       rawData.value.push(response.data);
       ElMessage.success('New sample added.');
@@ -1129,6 +1132,7 @@ function uploadInjection(row) {
 }
 
 async function downloadInjection(row) {
+  console.log('download injection',row);
   let bNumber = '';
   if (row.blockId !== "--") {
     bNumber = `-${row.blockId}`;
@@ -1191,9 +1195,9 @@ async function updateImagingRecordStatus(imagingId, newStatus) {
     // 检查是否需要更新 Sample 的状态
     await checkAndUpdateSampleStatus(record.sample_preparation_id);
 
-    ElMessage.success(`Imaging record ${imagingId} updated to ${newStatus}.`);
+    // ElMessage.success(`Imaging record ${imagingId} updated to ${newStatus}.`);
   } catch (error) {
-    ElMessage.error(`Failed to update imaging record ${imagingId} to ${newStatus}.`);
+    console.log(`Failed to update imaging record ${imagingId} to ${newStatus}.`);
   }
 }
 
@@ -1217,12 +1221,12 @@ async function checkAndUpdateSampleStatus(sampleId) {
         // 后端同步状态
         await api.put(`/sample_preparation/${sampleId}`,sample);
 
-        ElMessage.success(`Sample ${sampleId} updated to ${status}.`);
+        // ElMessage.success(`Sample ${sampleId} updated to ${status}.`);
         return;
       }
     }
   } catch (error) {
-    ElMessage.error(`Failed to update sample ${sampleId} status.`);
+    console.log(`Failed to update sample ${sampleId} status.`);
   }
 }
 // 更新样本状态
