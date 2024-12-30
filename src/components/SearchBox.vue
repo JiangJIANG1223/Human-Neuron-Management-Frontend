@@ -7,7 +7,7 @@
         </template>
         <el-form ref="searchForm" :model="searchQuery" label-width="150px" class="custom-box-content">
           <el-row :gutter="20">
-            <!-- 第一行：五个搜索栏 -->
+            <!-- 第一行：四个搜索栏 -->
             <el-col :span="6">
               <el-form-item label="Cell ID">
                 <el-row :gutter="5">
@@ -37,6 +37,15 @@
               </el-form-item>
             </el-col>
             <el-col :span="6">
+              <el-form-item label="小编号">
+                <el-select v-model="searchQuery.small_number" multiple placeholder="Chose 小编号" @change="handleSelectionChange('small_number')">
+                  <el-option v-if="searchQuery.small_number.length > 0" label="None" value="none"></el-option>
+                  <el-option v-for="option in smallIdOptions" :key="option.value" :label="option.label" :value="option.value"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
+          
+            <el-col :span="6">
               <el-form-item label="Slice ID">
                 <el-select v-model="searchQuery.slice_number" multiple placeholder="Chose Slice ID" @change="handleSelectionChange('slice_number')">
                   <el-option v-if="searchQuery.slice_number.length > 0" label="None" value="none"></el-option>
@@ -44,16 +53,6 @@
                 </el-select>
               </el-form-item>
             </el-col>
-          
-            <el-col :span="6">
-              <el-form-item label="Manual/Auto Inject">
-                <el-select v-model="searchQuery.inject_method" placeholder="Chose Manual/Auto Inject">
-                  <el-option label="None" value=""></el-option>
-                  <el-option label="Manual" value="0"></el-option>
-                  <el-option label="Auto" value="1"></el-option>
-                </el-select>
-              </el-form-item>
-            </el-col>         
             <el-col :span="6">
               <el-form-item label="Fresh Infusion">
                 <el-select v-model="searchQuery.fresh_perfusion" placeholder="Chose Fresh Infusion">
@@ -87,6 +86,16 @@
                 </el-select>
               </el-form-item>
             </el-col>
+
+          <!-- <el-col :span="6">
+              <el-form-item label="Manual/Auto Inject">
+                <el-select v-model="searchQuery.inject_method" placeholder="Chose Manual/Auto Inject">
+                  <el-option label="None" value=""></el-option>
+                  <el-option label="Manual" value="0"></el-option>
+                  <el-option label="Auto" value="1"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>          -->
           </el-row>
           <el-col :span="24" class="button-group">
             <el-button type="primary" @click="search" style="margin-left: 10px;">Search</el-button>
@@ -112,6 +121,7 @@ export default {
         cell_id_end: '',
         patient_number: [],
         tissue_block_number: [],
+        small_number: [],
         slice_number: [],
         source: '',  // 新增的搜索条件
         inject_method: '',
@@ -121,6 +131,7 @@ export default {
       },
       sampleIdOptions: [],
       tissueIdOptions: [],
+      smallIdOptions: [],
       sliceIdOptions: [],
       sourceOptions: [],  // 来源选项
       brainRegionOptions: [],
@@ -136,6 +147,7 @@ export default {
         .then(response => {
           this.sampleIdOptions = response.data.sample_id_options
           this.tissueIdOptions = response.data.tissue_id_options;
+          this.smallIdOptions = response.data.small_id_options;
           this.sliceIdOptions = response.data.slice_id_options;
           this.brainRegionOptions = response.data.brain_region_options;
         })
@@ -172,6 +184,7 @@ export default {
         ...this.searchQuery,
         patient_number: this.searchQuery.patient_number.join(','),
         tissue_block_number: this.searchQuery.tissue_block_number.join(','),
+        small_number: this.searchQuery.small_number.join(','),
         slice_number: this.searchQuery.slice_number.join(','),
         brain_region: this.searchQuery.brain_region.join(',')
       };
@@ -184,6 +197,7 @@ export default {
         cell_id_end: '',
         patient_number: [],
         tissue_block_number: [],
+        small_number: [],
         slice_number: [],
         source: '',  // 重置来源
         fresh_perfusion: '',
