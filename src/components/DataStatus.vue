@@ -215,7 +215,6 @@ export default {
       this.loading = true;
       axios.get('/api/productiontrend/', {
         params,
-        timeout: 5000,
       })
       .then(response => {
         if (!params.start_date && !params.end_date) {
