@@ -54,11 +54,11 @@
     <div class="bottom-section">
       <div class="additional-charts">
         <el-card>
-          <h3>患者年龄分布</h3>
+          <h3>样本年龄分布</h3>
           <div ref="ageChartContainer" style="width: 100%; height: 500px;"></div>
         </el-card>
         <el-card>
-          <h3>脑区分布(前十)</h3>
+          <h3>脑区分布</h3>
           <div ref="brainRegionChartContainer" style="width: 100%; height: 500px;"></div>
         </el-card>
       </div>
@@ -71,15 +71,42 @@
           <h3>免疫组化情况</h3>
           <div ref="ihcChartContainer" style="width: 100%; height: 500px;"></div>
         </el-card>
-
       </div>
+      <div class="additional-charts">
+        <el-card>
+          <div style="width: 100%; height: 500px;">
+            <h3>样本来源详情</h3>
+            <!-- 下拉框选择想查看的 来源 -->
+            <div>
+              <label>选择来源: </label>
+              <select v-model="selectedSource" @change="updateSourceDetail">
+                <option v-for="src in sourceList" :key="src" :value="src">{{ src }}</option>
+              </select>
+            </div>
+            <!-- 在此显示该来源的统计信息，或其它详情 -->
+            <div class="source-info">
+              <!-- <p>当前来源: {{ selectedSource }}</p>
+              <p>样本数: {{ sourceCountMap[selectedSource] || 0 }}</p> -->
+              <p>细胞数: {{ sourceCellCountMap[selectedSource] || 0 }}</p>
+            </div>
+
+            <!-- 脑区分布图表容器 -->
+            <div ref="regionChartContainer" style="width: 100%; height: 500px;"></div>
+          </div>
+        </el-card>
+        <el-card>
+          <h3>重建情况</h3>
+          <div ref="reconsChartContainer" style="width: 100%; height: 500px;"></div>
+        </el-card>
+      </div>
+
     </div>
     <el-dialog
       :title="dialogTitle"
       v-model="dialogVisible"
       width="50%">
       <div v-html="dialogContent"></div>
-      <div ref="brainRegionChart" style="width: 100%; height: 400px; margin-top: 20px;"></div>
+      <div ref="brainRegionChart" style="width: 100%; height: 400px; margin-top: 15px;"></div>
     </el-dialog>
   </div>
 </template>
@@ -124,7 +151,19 @@ export default {
       dialogVisible: false,
       dialogContent: '',
       dialogTitle: '',
-      brainRegionChart: null // 脑区分布图表实例
+      // 所有可选的“来源”列表
+      sourceList: [],
+      // 当前选中的来源
+      selectedSource: '',
+      // 记录每个来源对应的“样本数”
+      sourceCountMap: {},
+      // 记录每个来源对应的“细胞总数”
+      sourceCellCountMap: {},
+      // 记录每个来源的脑区分布 { source: { regionA: count, regionB: count } }
+      sourceBrainRegionDist: {},
+      // ECharts 实例
+      regionChartInstance: null,
+      reconsChart: null // 新增：用于“重建情况”图表
     };
   },
   mounted() {
@@ -134,6 +173,7 @@ export default {
     this.scheduleMidnightRefresh();
     this.fetchAdditionalChartData();
     this.fetchLatestReport();
+    this.regionChartInstance = echarts.init(this.$refs.regionChartContainer);
   },
   watch: {
     dialogVisible(val) {
@@ -300,6 +340,8 @@ export default {
       this.fetchBrainRegionDistribution();
       this.fetchIhcDistribution();
       this.fetchSampleSourceDistribution();
+      this.fetchSampleSourceDetails();
+      this.fetchReconsDistribution();  // 新增：获取“重建情况”
     },
     fetchAgeDistribution() {
       axios.get('/api/age-distribution')
@@ -341,7 +383,7 @@ export default {
         .then(response => {
           this.brainRegionChart.setOption({
             tooltip: {
-              trigger: 'axis',
+              trigger: 'item',
               axisPointer: {
                 type: 'shadow'
               }
@@ -361,10 +403,12 @@ export default {
               {
                 data: response.data.data,
                 type: 'bar',
+                
                 label: {
                   show: true,
                   position: 'top',
-                  formatter: '{c}'
+                  formatter: '{c}',
+                  rotate: 45
                 },
                 itemStyle: {
                   color: '#83bff6'
@@ -417,14 +461,10 @@ export default {
         .then(response => {
           const categories = response.data.categories;
           const data = response.data.data;
-          const sourcePatientNumbers = response.data.source_patient_numbers;
-          const patientCellCount = response.data.patient_cell_count; // 获取每个 patient_number 的细胞数量
-          const sourceCellCount = response.data.source_cell_count;
-          const sourceBrainRegionDistribution = response.data.source_brain_region_distribution;
 
           this.sampleSourceChart.setOption({
             tooltip: {
-              trigger: 'axis',
+              trigger: 'item',
               axisPointer: {
                 type: 'shadow'
               }
@@ -455,65 +495,109 @@ export default {
               }
             ]
           });
-
-          // Add event listener for click event
-          this.sampleSourceChart.on('click', (params) => {
-            const source = categories[params.dataIndex];
-            const patients = sourcePatientNumbers[source];
-            const cellCount = sourceCellCount[source];
-            const brainRegionDistribution = sourceBrainRegionDistribution[source];
-
-            // Calculate total patient numbers and valid patient numbers
-            const totalPatientCount = patients.length;
-            const validPatientCount = patients.filter(patient => patientCellCount[patient] > 0).length;
-
-            // Generate patient numbers with cell counts in parentheses
-            const patientInfo = patients.map(patient => `${patient} (${patientCellCount[patient]})`).join(', ');
-
-            // Prepare dialog content
-            this.dialogTitle = `Details for Source: ${source}`;
-            this.dialogContent = `
-              <strong>Patient Numbers:</strong> ${totalPatientCount}(有效样本数)/${validPatientCount}(有效数据样本数)<br/>
-              ${patientInfo}<br/>
-              <strong>Total Cell Count:</strong> ${cellCount}<br/>
-              <strong>Brain Region Distribution:</strong><br/>
-              ${Object.entries(brainRegionDistribution).map(([region, count]) => `${region}: ${count}`).join('<br/>')}
-            `;
-            this.dialogVisible = true; // Show the dialog
-
-            // Initialize or update the brain region chart
-            this.$nextTick(() => {
-              if (!this.brainRegionChartInstance) {
-                this.brainRegionChartInstance = echarts.init(this.$refs.brainRegionChart);
-              }
-              const brainRegionData = Object.entries(brainRegionDistribution).map(([region, count]) => ({ name: region, value: count }));
-
-              this.brainRegionChartInstance.setOption({
-                tooltip: {
-                  trigger: 'item'
-                },
-                series: [
-                  {
-                    name: 'Brain Region Distribution',
-                    type: 'pie',
-                    radius: '70%',
-                    data: brainRegionData,
-                    emphasis: {
-                      itemStyle: {
-                        shadowBlur: 10,
-                        shadowOffsetX: 0,
-                        shadowColor: 'rgba(0, 0, 0, 0.5)'
-                      }
-                    }
-                  }
-                ]
-              });
-            });
-          });
         })
         .catch(error => {
           console.error('Error fetching sample source distribution:', error);
+        });
+    },
+
+    fetchSampleSourceDetails() {
+      axios.get('/api/sample-source-details')
+        .then(response => {
+          this.sourceList = response.data.categories; // 各种来源
+          const data = response.data.data;
+          this.sourceCountMap = this.buildSourceCountMap(
+            response.data.categories,
+            response.data.data
+          );
+          // 细胞数量映射
+          this.sourceCellCountMap = response.data.source_cell_count;
+          // 脑区分布
+          this.sourceBrainRegionDist = response.data.source_brain_region_distribution;
+
+          // 默认选中第一个来源
+          if (this.sourceList.length > 0) {
+            this.selectedSource = this.sourceList[0];
+            this.updateSourceDetail();
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching sample source distribution:', error);
+        });
+    },
+
+    /**
+     * 根据后端返回的 categories 与 data 构建一个 {sourceName: count} 的对象
+     */
+    buildSourceCountMap(categories, data) {
+      const map = {};
+      // categories[i] 对应 data[i]
+      categories.forEach((cat, idx) => {
+        map[cat] = data[idx];
       });
+      return map;
+    },
+
+    /**
+     * 当下拉菜单选中来源变化时，更新脑区分布图
+     */
+    updateSourceDetail() {
+      // 拿到选中来源对应的脑区分布对象 e.g. { 'MTG.R': 10, 'PL.L': 5, ... }
+      const distObj = this.sourceBrainRegionDist[this.selectedSource] || {};
+      // 转换为 ECharts 饼图需要的格式 [{ name: 'MTG.R', value: 10 }, ... ]
+      const pieData = Object.entries(distObj).map(([region, count]) => {
+        return { name: region, value: count };
+      });
+
+      // 更新 ECharts 配置
+      this.regionChartInstance.setOption({
+        tooltip: {
+          trigger: 'item'
+        },
+        legend: {
+          top: '5%',
+          left: 'center'
+        },
+        series: [
+          {
+            name: '脑区分布',
+            type: 'pie',
+            radius: '60%',
+            data: pieData,
+            label: {
+              formatter: '{b}: {c} ({d}%)'
+            },
+            emphasis: {
+              itemStyle: {
+                shadowBlur: 10,
+                shadowOffsetX: 0,
+                shadowColor: 'rgba(0,0,0,0.5)'
+              }
+            }
+          }
+        ]
+      });
+    },
+
+    fetchReconsDistribution() {
+      axios.get('/api/recons-distribution')
+        .then(response => {
+          // 假设后端返回的数据格式类似： [{ name: '已重建', value: 123 }, { name: '未重建', value: 456 }]
+          const data = response.data;
+
+          // 设置图表数据
+          this.reconsChart.setOption({
+            series: [
+              {
+                // 只修改 series[0] 下 data
+                data: data
+              }
+            ]
+          });
+        })
+        .catch(error => {
+          console.error('Error fetching recons distribution:', error);
+        });
     },
 
     initCharts() {
@@ -663,6 +747,34 @@ export default {
             itemStyle: {
               color: '#83bff6'
             }
+          }
+        ]
+      });
+      this.reconsChart = echarts.init(this.$refs.reconsChartContainer);
+      this.reconsChart.setOption({
+        tooltip: {
+          trigger: 'item'
+        },
+        legend: {
+          top: '5%',
+          left: 'center'
+        },
+        series: [
+          {
+            name: '重建情况',
+            type: 'pie',
+            radius: '70%',
+            avoidLabelOverlap: false,
+                itemStyle: {
+                  borderRadius: 10,
+                  borderColor: '#fff',
+                  borderWidth: 2
+                },
+            label: {
+              formatter: '{c} ({d}%)',
+              color: 'black'
+            },
+            data: []  // 初始为空，后面通过请求结果更新
           }
         ]
       });
