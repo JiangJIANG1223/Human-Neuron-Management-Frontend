@@ -1,35 +1,73 @@
 <template>
   <div class="container">
-    <div>
-      <el-form :model="searchQuery" label-width="120px" class="search-form">
-        <el-row :gutter="20">
-          <el-col :span="6">
-            <el-form-item label="Sample ID">
-              <el-input v-model="searchQuery.sampleId" placeholder="Enter Sample ID"></el-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="Tissue ID">
-              <el-input v-model="searchQuery.tissueId" placeholder="Enter Tissue ID"></el-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="Roll ID">
-              <el-input v-model="searchQuery.rollId" placeholder="Enter Roll ID"></el-input>
-            </el-form-item>
-          </el-col>
-          <el-col :span="6">
-            <el-form-item label="Slice ID">
-              <el-input v-model="searchQuery.sliceId" placeholder="Enter Slice ID"></el-input>
-            </el-form-item>
-          </el-col>
-        </el-row>
-        <el-row>
-          <el-button type="primary" @click="search">Search</el-button>
-          <el-button @click="resetSearch">Reset</el-button>
-        </el-row>
-      </el-form>
-    </div>
+    <el-card class="search-box-card" shadow="hover">
+      <el-collapse value="1">
+        <el-collapse-item name="1">
+          <template #title>
+            <span class="search-title">Search Samples</span>
+          </template>
+          <el-form ref="searchForm" :model="searchQuery" label-width="150px" class="custom-box-content">
+            <el-row :gutter="20">
+              <el-col :span="6">
+                <el-form-item label="Sample ID">
+                  <el-input v-model="searchQuery.sampleId" placeholder="Enter Sample ID"></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="Tissue ID">
+                  <el-input v-model="searchQuery.tissueId" placeholder="Enter Tissue ID"></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="Roll ID">
+                  <el-input v-model="searchQuery.rollId" placeholder="Enter Roll ID"></el-input>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="Slice ID">
+                  <el-input v-model="searchQuery.sliceId" placeholder="Enter Slice ID"></el-input>
+                </el-form-item>
+              </el-col>
+            </el-row>
+            <el-col :span="24" class="button-group">
+              <el-button type="primary" @click="search" style="margin-left: 10px;">Search</el-button>
+              <el-button type="default" @click="resetSearch" style="margin-left: 10px;">Reset</el-button>
+            </el-col>
+          </el-form>
+        </el-collapse-item>
+      </el-collapse>
+    </el-card>
+<!--    <div>-->
+<!--      <el-form :model="searchQuery" label-width="120px" class="search-form">-->
+<!--        <el-row :gutter="20">-->
+<!--          <el-col :span="6">-->
+<!--            <el-form-item label="Sample ID">-->
+<!--              <el-input v-model="searchQuery.sampleId" placeholder="Enter Sample ID"></el-input>-->
+<!--            </el-form-item>-->
+<!--          </el-col>-->
+<!--          <el-col :span="6">-->
+<!--            <el-form-item label="Tissue ID">-->
+<!--              <el-input v-model="searchQuery.tissueId" placeholder="Enter Tissue ID"></el-input>-->
+<!--            </el-form-item>-->
+<!--          </el-col>-->
+<!--          <el-col :span="6">-->
+<!--            <el-form-item label="Roll ID">-->
+<!--              <el-input v-model="searchQuery.rollId" placeholder="Enter Roll ID"></el-input>-->
+<!--            </el-form-item>-->
+<!--          </el-col>-->
+<!--          <el-col :span="6">-->
+<!--            <el-form-item label="Slice ID">-->
+<!--              <el-input v-model="searchQuery.sliceId" placeholder="Enter Slice ID"></el-input>-->
+<!--            </el-form-item>-->
+<!--          </el-col>-->
+<!--        </el-row>-->
+<!--        <el-row>-->
+<!--          <el-button type="primary" @click="search">Search</el-button>-->
+<!--          <el-button @click="resetSearch">Reset</el-button>-->
+<!--        </el-row>-->
+<!--      </el-form>-->
+<!--    </div>-->
+
     <div style="display: flex; justify-content: space-between;">
       <div>
         <el-tooltip content="新建注射记录表">
@@ -2190,23 +2228,27 @@ function toCell(img) {
   padding: 16px;
   font-family: sans-serif;
 }
-
-.search-bar {
-  background: #fff;
-  padding: 16px;
-  border-radius: 8px;
+.search-box-card {
+  padding: 4px;
+  margin-bottom: 20px;
+  /* padding-right: 40px; */
 }
 
-.search-fields {
-  display: flex;
-  gap: 16px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
+.custom-box-content {
+  padding-left: 20px;
+  padding-right: 30px; /* 右边距 */
 }
 
-.search-field {
+.search-title {
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.button-group {
   display: flex;
-  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 10px;
 }
 
 .btn {
