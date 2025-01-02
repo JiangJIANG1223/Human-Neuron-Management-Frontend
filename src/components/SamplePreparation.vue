@@ -40,12 +40,12 @@
     <div style="display: flex; justify-content: space-between;">
       <div>
         <el-tooltip content="新建注射记录表">
-          <el-button type="primary" class="btn" @click="handleNew">New</el-button>
+          <el-button type="primary" class="btn" @click="handleNew" :disabled="isGuest">New</el-button>
         </el-tooltip>
       </div>
 
       <!-- 表单外的操作按钮：Cache, Inspect -->
-      <el-button type="primary" class="btn" @click="openInjectionFilesDialog">Injection Files</el-button>
+      <el-button type="primary" class="btn" @click="openInjectionFilesDialog" :disabled="isGuest">Injection Files</el-button>
     </div>
 
     <!-- 数据表格区域 -->
@@ -82,10 +82,10 @@
           <el-tooltip
             content="replace the injection file"
           >
-            <el-button type="primary" class="btn" :disabled="(row.imaging_records.length > 0)" @click="uploadInjection(row)">Upload</el-button>
+            <el-button type="primary" class="btn" :disabled="isGuest || row.imaging_records.length > 0" @click="uploadInjection(row)">Upload</el-button>
           </el-tooltip>
-          <el-button type="primary" class="btn" @click="downloadInjection(row)">Download</el-button>
-          <el-button type="primary" class="btn" @click="uploadBrightField(row)">Bright field data</el-button>
+          <el-button type="primary" class="btn" @click="downloadInjection(row)" :disabled="isGuest">Download</el-button>
+          <el-button type="primary" class="btn" @click="uploadBrightField(row)" :disabled="isGuest">Bright field data</el-button>
         </td>
         <td>
           <el-button type="primary" class="btn" @click="openImagingDialog(row)">Imaging info</el-button>
@@ -214,7 +214,7 @@
       <div class="dialog-content">
         <div class="new-injection-section">
           <el-tooltip content="create a new Imaging Record">
-            <el-button type="primary" class="btn" @click="handleNewImagingRecord">New</el-button>
+            <el-button type="primary" class="btn" @click="handleNewImagingRecord" :disabled="isGuest">New</el-button>
           </el-tooltip>
           <el-tooltip content="upload and show Imaging map">
             <el-button type="primary" class="btn" @click="uploadImagingMap">Imaging map</el-button>
@@ -257,10 +257,10 @@
               <button class="btn" @click="imageMIP(img)">Image MIP</button>
             </td>
             <td>
-              <button class="btn" @click="uploadImagingData(img)">Imaging data</button>
-              <button class="btn" @click="uploadImagingMetadata(img)">Metadata</button>
-              <button class="btn" @click="uploadImagingMarker(img)">Soma</button>
-              <button class="btn" @click="uploadImagingMatchTable(img)">Injection matched table</button>
+              <button class="btn" @click="uploadImagingData(img)" :disabled="isGuest">Imaging data</button>
+              <button class="btn" @click="uploadImagingMetadata(img)" :disabled="isGuest">Metadata</button>
+              <button class="btn" @click="uploadImagingMarker(img)" :disabled="isGuest">Soma</button>
+              <button class="btn" @click="uploadImagingMatchTable(img)" :disabled="isGuest">Injection matched table</button>
             </td>
             <td>
               <button class="btn" @click="toCell(img)" :disabled="!(img.status === 'imaged' && img.marked)">To cell</button>
@@ -270,8 +270,8 @@
         </table>
       </div>
       <template #footer>
-        <el-button type="danger" class="btn" @click="deleteImagingRecords">Delete</el-button>
-        <el-button type="primary" class="btn" @click="saveImagingRecords">Save</el-button>
+        <el-button type="danger" class="btn" @click="deleteImagingRecords" :disabled="isGuest">Delete</el-button>
+        <el-button type="primary" class="btn" @click="saveImagingRecords" :disabled="isGuest">Save</el-button>
       </template>
     </el-dialog>
 
@@ -306,7 +306,7 @@
       <template #footer>
         <button class="btn" @click="editImageDialogVisible = false">Cancel</button>
 <!--        <button class="btn" @click="saveImagingBlock">Save</button>-->
-        <button class="btn" @click="downloadImagingBlock">Download</button>
+        <button class="btn" @click="downloadImagingBlock" :disabled="isGuest">Download</button>
       </template>
     </el-dialog>
 
@@ -332,7 +332,7 @@
         <el-button
             type="primary"
             @click="uploadImagingMetadataFiles"
-            :disabled="metadataFilesList.length === 0">
+            :disabled="isGuest || metadataFilesList.length === 0">
           Upload
         </el-button>
         <el-button @click="imagingMetadataDialogVisible = false">Cancel</el-button>
@@ -359,7 +359,7 @@
         <el-button
             type="primary"
             @click="uploadImagingAnnotationFiles"
-            :disabled="markerFilesList.length === 0">
+            :disabled="isGuest || markerFilesList.length === 0">
           Upload
         </el-button>
         <el-button @click="imagingMarkerDialogVisible = false">Cancel</el-button>
@@ -386,7 +386,7 @@
         <el-button
             type="primary"
             @click="uploadImagingMatchTableFiles"
-            :disabled="matchTableFilesList.length === 0">
+            :disabled="isGuest || matchTableFilesList.length === 0">
           Upload
         </el-button>
         <el-button @click="imagingMatchTableDialogVisible = false">Cancel</el-button>
@@ -463,7 +463,7 @@
       </div>
 
       <template #footer>
-        <el-button type="primary" class="btn" @click="openUploadImagingMapFile">Upload/Replace</el-button>
+        <el-button type="primary" class="btn" @click="openUploadImagingMapFile" :disabled="isGuest">Upload/Replace</el-button>
       </template>
     </el-dialog>
     <el-dialog v-model="uploadImagingMapVisible" width="50%">
@@ -610,6 +610,10 @@ const api = axios.create({
   },
 });
 
+// eslint-disable-next-line no-undef
+defineProps({
+  isGuest: Boolean,
+});
 // 原始数据
 const rawData = ref([]);
 
