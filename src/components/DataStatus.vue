@@ -73,7 +73,7 @@
         </el-card>
       </div>
       <div class="additional-charts">
-        <el-card>
+        <el-card v-loading="loadingSourceDetail">
           <div style="width: 100%; height: 500px;">
             <h3>样本来源详情</h3>
             <!-- 下拉框选择想查看的 来源 -->
@@ -94,6 +94,7 @@
             <div ref="regionChartContainer" style="width: 100%; height: 500px;"></div>
           </div>
         </el-card>
+
         <el-card>
           <h3>重建情况</h3>
           <div ref="reconsChartContainer" style="width: 100%; height: 500px;"></div>
@@ -163,7 +164,8 @@ export default {
       sourceBrainRegionDist: {},
       // ECharts 实例
       regionChartInstance: null,
-      reconsChart: null // 新增：用于“重建情况”图表
+      reconsChart: null, // 新增：用于“重建情况”图表
+      loadingSourceDetail: false
     };
   },
   mounted() {
@@ -502,6 +504,7 @@ export default {
     },
 
     fetchSampleSourceDetails() {
+      this.loadingSourceDetail = true;
       axios.get('/api/sample-source-details')
         .then(response => {
           this.sourceList = response.data.categories; // 各种来源
@@ -523,6 +526,10 @@ export default {
         })
         .catch(error => {
           console.error('Error fetching sample source distribution:', error);
+        })
+        .finally(() => {
+          // 请求完成，结束加载状态
+          this.loadingSourceDetail = false;
         });
     },
 
