@@ -1,7 +1,7 @@
 <template>
   <div class="container">
     <el-card class="search-box-card" shadow="hover">
-      <el-collapse value="1">
+      <el-collapse v-model='isExpanded'>
         <el-collapse-item name="1">
           <template #title>
             <span class="search-title">Search Samples</span>
@@ -37,37 +37,6 @@
         </el-collapse-item>
       </el-collapse>
     </el-card>
-<!--    <div>-->
-<!--      <el-form :model="searchQuery" label-width="120px" class="search-form">-->
-<!--        <el-row :gutter="20">-->
-<!--          <el-col :span="6">-->
-<!--            <el-form-item label="Sample ID">-->
-<!--              <el-input v-model="searchQuery.sampleId" placeholder="Enter Sample ID"></el-input>-->
-<!--            </el-form-item>-->
-<!--          </el-col>-->
-<!--          <el-col :span="6">-->
-<!--            <el-form-item label="Tissue ID">-->
-<!--              <el-input v-model="searchQuery.tissueId" placeholder="Enter Tissue ID"></el-input>-->
-<!--            </el-form-item>-->
-<!--          </el-col>-->
-<!--          <el-col :span="6">-->
-<!--            <el-form-item label="Roll ID">-->
-<!--              <el-input v-model="searchQuery.rollId" placeholder="Enter Roll ID"></el-input>-->
-<!--            </el-form-item>-->
-<!--          </el-col>-->
-<!--          <el-col :span="6">-->
-<!--            <el-form-item label="Slice ID">-->
-<!--              <el-input v-model="searchQuery.sliceId" placeholder="Enter Slice ID"></el-input>-->
-<!--            </el-form-item>-->
-<!--          </el-col>-->
-<!--        </el-row>-->
-<!--        <el-row>-->
-<!--          <el-button type="primary" @click="search">Search</el-button>-->
-<!--          <el-button @click="resetSearch">Reset</el-button>-->
-<!--        </el-row>-->
-<!--      </el-form>-->
-<!--    </div>-->
-
     <div style="display: flex; justify-content: space-between;">
       <div>
         <el-tooltip content="新建注射记录表">
@@ -659,7 +628,7 @@ const filteredData = computed(() => {
 // 编辑对话框
 const uploadDialogVisible = ref(false);
 const editDialogVisible = ref(false)
-
+const isExpanded = ['1'];
 let editForm = ref({
   id: null,
   sampleId: '',
