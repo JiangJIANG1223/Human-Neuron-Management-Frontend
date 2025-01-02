@@ -74,7 +74,7 @@
       </div>
       <div class="additional-charts">
         <el-card v-loading="loadingSourceDetail">
-          <div style="width: 100%; height: 500px;">
+          <div style="width: 100%; height: 550px;">
             <h3>样本来源详情</h3>
             <!-- 下拉框选择想查看的 来源 -->
             <div>
@@ -562,7 +562,7 @@ export default {
           trigger: 'item'
         },
         legend: {
-          top: '5%',
+          top: '1%',
           left: 'center'
         },
         series: [
@@ -580,7 +580,8 @@ export default {
                 shadowOffsetX: 0,
                 shadowColor: 'rgba(0,0,0,0.5)'
               }
-            }
+            },
+            top: '5%'
           }
         ]
       });

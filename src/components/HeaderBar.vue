@@ -2,7 +2,7 @@
   <div class="header-bar">
     <span>Institute for Brain and Intelligence</span>
     <span>Human Neuron Data Management System</span>
-    <el-button class="db-agent-button" @click="chatVisible = true">DB-Agent</el-button>
+    <!-- <el-button class="db-agent-button" @click="chatVisible = true">DB-Agent</el-button> -->
     <el-button class="login-button" :link="true" @click="logoutAndRedirect">重新登录</el-button>
 
     <ChatWindow v-show="chatVisible" @close="chatVisible = false" />
