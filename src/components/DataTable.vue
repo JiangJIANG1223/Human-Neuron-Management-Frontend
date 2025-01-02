@@ -19,7 +19,7 @@
       <el-table ref="dataTable" :data="tableData" style="width: 100%" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="55"></el-table-column>
         <el-table-column prop="cell_id" label="Cell ID" sortable></el-table-column>
-        <el-table-column prop="patient_number" label="Sample ID" sortable></el-table-column>
+        <el-table-column prop="patient_number" label="Patient ID" sortable></el-table-column>
         <el-table-column prop="tissue_block_number" label="Tissue ID" sortable></el-table-column>
         <el-table-column prop="small_number" label="Roll ID" sortable></el-table-column>
         <el-table-column prop="slice_number" label="Slice ID" sortable></el-table-column>

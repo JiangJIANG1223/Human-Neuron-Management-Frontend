@@ -4,7 +4,7 @@
       <el-menu-item index="DataTable" icon="el-icon-s-home">Homepage</el-menu-item>
       <el-menu-item index="DataExplorer" icon="el-icon-pie-chart">Data Explorer</el-menu-item>
       <el-menu-item index="DataStatus" icon="el-icon-info">Data Status</el-menu-item>
-      <el-menu-item index="SamplePreparation" icon="el-icon-info">Sample Preparation</el-menu-item>
+      <el-menu-item index="SamplePreparation" icon="el-icon-info">Injection & Imaging</el-menu-item>
       <el-menu-item index="SampleInfo" icon="el-icon-info">Sample Info </el-menu-item>  <!-- 新增项 -->
     </el-menu>
   </el-aside>

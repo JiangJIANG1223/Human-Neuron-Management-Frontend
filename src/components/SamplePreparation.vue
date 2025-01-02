@@ -4,13 +4,13 @@
       <el-collapse v-model='isExpanded'>
         <el-collapse-item name="1">
           <template #title>
-            <span class="search-title">Search Samples</span>
+            <span class="search-title">Search Injections</span>
           </template>
           <el-form ref="searchForm" :model="searchQuery" label-width="150px" class="custom-box-content">
             <el-row :gutter="20">
               <el-col :span="6">
-                <el-form-item label="Sample ID">
-                  <el-input v-model="searchQuery.sampleId" placeholder="Enter Sample ID"></el-input>
+                <el-form-item label="Patient ID">
+                  <el-input v-model="searchQuery.sampleId" placeholder="Enter Patient ID"></el-input>
                 </el-form-item>
               </el-col>
               <el-col :span="6">
@@ -52,7 +52,7 @@
     <table class="data-table">
       <thead>
       <tr>
-        <th>Sample ID</th>
+        <th>Patient ID</th>
         <th>Tissue ID</th>
         <th>Roll ID</th>
         <th>Slice ID</th>
@@ -95,8 +95,8 @@
     </table>
     <el-dialog v-model="editDialogVisible" title="View / Edit Sample" width="600px">
       <el-form :model="editForm" label-width="120px">
-        <!-- Sample ID（只读） -->
-        <el-form-item label="Sample ID">
+        <!-- Patient ID（只读） -->
+        <el-form-item label="Patient ID">
           <el-input v-model="editForm.sampleId" disabled></el-input>
         </el-form-item>
         <!-- Tissue ID（只读） -->
@@ -867,7 +867,7 @@ async function uploadInjectionFile() {
   let regex = new RegExp(
         `${currentSampleId.value}\\.csv$`
   );
-  console.log('Current Sample ID:', currentSampleId.value);
+  console.log('Current Patient ID:', currentSampleId.value);
   console.log('Uploaded File Name:', fileName);
   if (!regex.test(fileName)) {
     ElMessage.error(
@@ -1065,7 +1065,7 @@ function cancelUploadImage() {
 // 保存样本数据（新建或更新）
 async function saveSampleData() {
   if (!editForm.value.sampleId) {
-    ElMessage.warning('Sample ID is required.');
+    ElMessage.warning('Patient ID is required.');
     return;
   }
     // PUT 到后端更新
@@ -1185,7 +1185,7 @@ function uploadBrightField(row) {
   if (row.blockId && row.blockId !== '--') {
     currentSampleId.value += `-${row.blockId}`;
   }
-  console.log('current sample id', currentSampleId.value);
+  console.log('current Patient ID', currentSampleId.value);
   uploadBrightFieldDataVisible.value = true;
 }
 
@@ -1289,9 +1289,9 @@ function parseImagingFileName(file) {
 
   const fileName = file.name.replace(/\.(xlsx|xml)$/, ''); // 去掉文件扩展名
   const samplePrefix = currentSampleId.value; // 当前样本 ID（P00095-T001-R001-S029-B1）
-  console.log('current sample id',currentSampleId.value)
+  console.log('current Patient ID',currentSampleId.value)
   if (!fileName.startsWith(samplePrefix)) {
-    console.error('File name does not match the current sample ID!');
+    console.error('File name does not match the current Patient ID!');
     return false; // 停止上传
   }
 
@@ -1678,7 +1678,7 @@ async function newImagingRecord() {
   let regex = new RegExp(
       `^${currentSampleId.value}(-\\d+)?-[A-Za-z_]{2,10}\\.(xlsx|xml)$`
   );
-  console.log('Current Sample ID:', currentSampleId.value);
+  console.log('Current Patient ID:', currentSampleId.value);
   console.log('Uploaded File Name:', fileName);
   if (!regex.test(fileName)) {
     ElMessage.error(

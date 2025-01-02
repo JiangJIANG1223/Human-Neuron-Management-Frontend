@@ -21,8 +21,8 @@
               </el-form-item>
             </el-col>
             <el-col :span="6">
-              <el-form-item label="Sample ID">
-                <el-select v-model="searchQuery.patient_number" multiple placeholder="Chose Sample ID" @change="handleSelectionChange('patient_number')">
+              <el-form-item label="Patient ID">
+                <el-select v-model="searchQuery.patient_number" multiple placeholder="Chose Patient ID" @change="handleSelectionChange('patient_number')">
                   <el-option v-if="searchQuery.patient_number.length > 0" label="None" value="none"></el-option>
                   <el-option v-for="option in sampleIdOptions" :key="option.value" :label="option.label" :value="option.value"></el-option>
                 </el-select>
