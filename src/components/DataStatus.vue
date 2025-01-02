@@ -75,7 +75,7 @@
       <div class="additional-charts">
         <el-card v-loading="loadingSourceDetail">
           <div style="width: 100%; height: 550px;">
-            <h3>样本来源详情</h3>
+            <h3>数据来源情况</h3>
             <!-- 下拉框选择想查看的 来源 -->
             <div>
               <label>选择来源: </label>
@@ -87,7 +87,7 @@
             <div class="source-info">
               <!-- <p>当前来源: {{ selectedSource }}</p>
               <p>样本数: {{ sourceCountMap[selectedSource] || 0 }}</p> -->
-              <p>细胞数: {{ sourceCellCountMap[selectedSource] || 0 }}</p>
+              <p>细胞数量: {{ sourceCellCountMap[selectedSource] || 0 }}</p>
             </div>
 
             <!-- 脑区分布图表容器 -->
