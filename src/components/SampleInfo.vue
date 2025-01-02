@@ -1,6 +1,6 @@
 <template>
   <div>
-    <SearchSample @search="receiveData" />
+    <SearchSample @search="onSearch" />
     <div class="button-group">
       <el-button type="primary" @click="openAddDialog" :disabled="isGuest">Upload</el-button>
       <el-button @click="exportData" :disabled="isGuest">Export</el-button>
@@ -125,7 +125,6 @@ import * as XLSX from 'xlsx';
 import { ElLoading } from 'element-plus';
 import SearchSample from './Search_for_Sample.vue';
 
-
 export default {
   name: 'SampleInfo',
   components: {
@@ -146,10 +145,10 @@ export default {
       samplefile_downloadLoading: false,
       samplefile_uploadLoading: false,
       current_image_name: '',  // 新增
-      searchQuery: {},
-
-
-
+      searchQuery: {
+        sample_source: [],
+        patient_ID: []
+      },
       sampleInfo: [],
       selectedSamples: [],
       selectAllPages: false,
@@ -259,19 +258,15 @@ export default {
     this.fetchSampleInfo();
   },
   watch: {
-     searchQuery(newVal) {
-        if (newVal) {
-          this.fetchSampleInfo();
-        }
-     }
+    searchQuery: {
+      handler(newVal) {
+        // 当 searchQuery 改变时，重新请求数据
+        this.fetchSampleInfo();
+      },
+      deep: true  // 如果 searchQuery 是个对象/数组，需要 deep 监听
+    }
   },
   methods: {
-    receiveData(data) {
-      // 接收来自子组件的数据
-      this.searchQuery = data;
-      // alert(`${this.searchQuery.inputString}`);
-      // alert(`${this.searchQuery.sample_hospital}`)
-    },
     async viewSampleSnapshot(viewForm) {
       this.snapshot_dialogVisible = true;
       await this.getSampleSnapshot(viewForm);
@@ -399,34 +394,46 @@ export default {
       this.$refs[inputRef].value = null;
       this.samplefile_uploadLoading = false; // 停止加载动画
     },
+
+    /**
+     * 当子组件发出 "search" 事件时被触发
+     */
+     onSearch(queryParams) {
+      // 将子组件传来的查询条件同步到父组件自己的 searchQuery 中
+      this.searchQuery.sample_source = queryParams.sample_source || [];
+      this.searchQuery.patient_ID = queryParams.patient_ID || [];
+      console.log(queryParams)
+      // 这一步会触发 watch.searchQuery 从而调用 fetchSampleInfo()
+    },
     fetchSampleInfo() {
-      // alert(`${this.searchQuery.patient_ID}`);
       const params = {
         skip: (this.currentPage - 1) * this.pageSize,
         limit: this.pageSize,
-        sample_hospital: this.searchQuery.sample_hospital,
-        PID: this.searchQuery.patient_ID
+        sample_source: this.searchQuery.sample_source,
+        PID: this.searchQuery.patient_ID,
       };
+
       axios.get('/api/sample_information/', {
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        params: params
+        params: params,
+        paramsSerializer: (params) => {
+          // 序列化为 FastAPI 支持的格式
+          return Object.entries(params)
+            .flatMap(([key, value]) =>
+              Array.isArray(value)
+                ? value.map((v) => `${encodeURIComponent(key)}=${encodeURIComponent(v)}`)
+                : `${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+            )
+            .join('&');
+        },
       })
-      .then(response => {
+      .then((response) => {
         this.sampleInfo = response.data.data;
         this.total = response.data.total;
-        // 在分页数据加载后恢复之前选中的状态
-        this.$nextTick(() => {
-          this.sampleInfo.forEach(row => {
-            const isSelected = this.selectedSamples.some(selected => selected.idx === row.idx);
-            if (isSelected) {
-              this.$refs.sampleInfo.toggleRowSelection(row, true);
-            }
-          });
-        });
       })
-      .catch(error => {
+      .catch((error) => {
         console.error(error);
         this.$message.error('Failed to load sample information');
       });
@@ -484,11 +491,10 @@ export default {
 
     fetchAllSampleInfo() {
       const params = {
-        // skip: (this.currentPage - 1) * this.pageSize,
-        // limit: this.pageSize,
         skip: 0,
         limit: this.total,
-        sample_hospital: this.searchQuery.sample_hospital,
+        // 两个字段都是数组。例如 ["BJ-TT", "NanJ-NK"]
+        sample_source: this.searchQuery.sample_source,
         PID: this.searchQuery.patient_ID
       };
       return axios.get('/api/sample_information/', {
@@ -500,16 +506,6 @@ export default {
         return response.data.data;
       });
     },
-    // handlePageChange(page) {
-    //   this.currentPage = page;
-    //   this.fetchSampleInfo();
-    // },
-    // handleSelectionChange(val) {
-    //   if (!this.selectAllPages) {
-    //     this.selectedSamples = val;
-    //   }
-    // },
-
     openAddDialog() {
       this.addDialogVisible = true;
     },

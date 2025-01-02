@@ -3,7 +3,7 @@
     <el-collapse v-model="isExpanded">
       <el-collapse-item name="1">
         <template #title>
-          <span class="search-title">Search</span>
+          <span class="search-title">Search Cells</span>
         </template>
         <el-form ref="searchForm" :model="searchQuery" label-width="150px" class="custom-box-content">
           <el-row :gutter="20">
@@ -37,8 +37,8 @@
               </el-form-item>
             </el-col>
             <el-col :span="6">
-              <el-form-item label="小编号">
-                <el-select v-model="searchQuery.small_number" multiple placeholder="Chose 小编号" @change="handleSelectionChange('small_number')">
+              <el-form-item label="Roll ID">
+                <el-select v-model="searchQuery.small_number" multiple placeholder="Chose Roll ID" @change="handleSelectionChange('small_number')">
                   <el-option v-if="searchQuery.small_number.length > 0" label="None" value="none"></el-option>
                   <el-option v-for="option in smallIdOptions" :key="option.value" :label="option.label" :value="option.value"></el-option>
                 </el-select>
