@@ -37,8 +37,8 @@
                   >
                     <el-option label="injected" value="injected"></el-option>
                     <el-option label="imaged" value="imaged"></el-option>
-                    <el-option label="marked" value="uploaded"></el-option>
-                    <el-option label="inserted" value="uploaded"></el-option>
+                    <el-option label="marked" value="marked"></el-option>
+                    <el-option label="inserted" value="inserted"></el-option>
                     <el-option label="matched" value="matched"></el-option>
                   </el-select>
                 </el-form-item>
