@@ -689,19 +689,50 @@ defineProps({
 });
 // 原始数据
 const rawData = ref([]);
-
-// 过滤数据
 const filteredData = computed(() => {
   return rawData.value.filter((row) => {
-    return (
-        (!searchQuery.value.sampleId || row.sampleId.includes(searchQuery.value.sampleId)) &&
-        (!searchQuery.value.tissueId || row.tissueId.includes(searchQuery.value.tissueId)) &&
-        (!searchQuery.value.rollId || row.rollId.includes(searchQuery.value.rollId)) &&
-        (!searchQuery.value.sliceId || row.sliceId.includes(searchQuery.value.sliceId))&&
-        (!searchQuery.value.status || row.status.includes(searchQuery.value.status))
-    );
+    // 1) 处理 sampleId、tissueId、rollId、sliceId 的 AND 逻辑
+    const matchSampleId =
+        !searchQuery.value.sampleId ||
+        row.sampleId.includes(searchQuery.value.sampleId);
+    const matchTissueId =
+        !searchQuery.value.tissueId ||
+        row.tissueId.includes(searchQuery.value.tissueId);
+    const matchRollId =
+        !searchQuery.value.rollId ||
+        row.rollId.includes(searchQuery.value.rollId);
+    const matchSliceId =
+        !searchQuery.value.sliceId ||
+        row.sliceId.includes(searchQuery.value.sliceId);
+    let matchStatus = true;
+    if (searchQuery.value.status && searchQuery.value.status.length > 0) {
+      // 确保 searchQuery.value.status 一定是数组
+      const searchStatusArray = Array.isArray(searchQuery.value.status)
+          ? searchQuery.value.status
+          : [searchQuery.value.status];
+      let rowStatusArray = [];
+      if (Array.isArray(row.status)) {
+        rowStatusArray = [...row.status];
+      } else if (typeof row.status === "string") {
+        rowStatusArray = [row.status];
+      }
+      matchStatus = rowStatusArray.some((item) => searchStatusArray.includes(item));
+    }
+    return matchSampleId && matchTissueId && matchRollId && matchSliceId && matchStatus;
   });
 });
+// 过滤数据
+// const filteredData = computed(() => {
+//   return rawData.value.filter((row) => {
+//     return (
+//         (!searchQuery.value.sampleId || row.sampleId.includes(searchQuery.value.sampleId)) &&
+//         (!searchQuery.value.tissueId || row.tissueId.includes(searchQuery.value.tissueId)) &&
+//         (!searchQuery.value.rollId || row.rollId.includes(searchQuery.value.rollId)) &&
+//         (!searchQuery.value.sliceId || row.sliceId.includes(searchQuery.value.sliceId))&&
+//         (!searchQuery.value.status || row.status.includes(searchQuery.value.status))
+//     );
+//   });
+// });
 
 // 编辑对话框
 const uploadDialogVisible = ref(false);
@@ -817,12 +848,38 @@ function handlePageChange(page) {
 }
 
 function search() {
+  const statusArray = Array.isArray(searchQuery.value.status)
+      ? [...searchQuery.value.status] // 用扩展运算符拷贝一份
+      : [];
   filteredData.value = rawData.value.filter((row) => {
+    const matchSampleId =
+        !searchQuery.value.sampleId ||
+        row.sampleId.includes(searchQuery.value.sampleId);
+
+    const matchTissueId =
+        !searchQuery.value.tissueId ||
+        row.tissueId.includes(searchQuery.value.tissueId);
+
+    const matchRollId =
+        !searchQuery.value.rollId ||
+        row.rollId.includes(searchQuery.value.rollId);
+
+    const matchSliceId =
+        !searchQuery.value.sliceId ||
+        row.sliceId.includes(searchQuery.value.sliceId);
+
+    const matchStatus =
+        !searchQuery.value.status ||
+        searchQuery.value.status.length === 0 ||
+        statusArray.some((item) => row.status.includes(item));
+
+
     return (
-        (!searchQuery.value.sampleId || row.sampleId.includes(searchQuery.value.sampleId)) &&
-        (!searchQuery.value.tissueId || row.tissueId.includes(searchQuery.value.tissueId)) &&
-        (!searchQuery.value.rollId || row.rollId.includes(searchQuery.value.rollId)) &&
-        (!searchQuery.value.sliceId || row.sliceId.includes(searchQuery.value.sliceId))
+        matchSampleId &&
+        matchTissueId &&
+        matchRollId &&
+        matchSliceId &&
+        matchStatus
     );
   });
 }
