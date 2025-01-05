@@ -28,6 +28,21 @@
                   <el-input v-model="searchQuery.sliceId" placeholder="Enter Slice ID"></el-input>
                 </el-form-item>
               </el-col>
+              <el-col :span="6">
+                <el-form-item label="Sample Status">
+                  <el-select
+                      v-model="searchQuery.status"
+                      multiple
+                      placeholder="Select the status"
+                  >
+                    <el-option label="injected" value="injected"></el-option>
+                    <el-option label="imaged" value="imaged"></el-option>
+                    <el-option label="marked" value="uploaded"></el-option>
+                    <el-option label="inserted" value="uploaded"></el-option>
+                    <el-option label="matched" value="matched"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
             </el-row>
             <el-col :span="24" class="button-group">
               <el-button type="primary" @click="search" style="margin-left: 10px;">Search</el-button>
@@ -47,8 +62,6 @@
       <!-- 表单外的操作按钮：Cache, Inspect -->
       <el-button type="primary" class="btn" @click="openInjectionFilesDialog" :disabled="isGuest">Injection Files</el-button>
     </div>
-
-    <!-- 数据表格区域 -->
     <table class="data-table">
       <thead>
       <tr>
@@ -57,8 +70,7 @@
         <th>Roll ID</th>
         <th>Slice ID</th>
         <th>Block ID</th>
-<!--        <th>Channels</th>-->
-<!--        <th>Needles</th>-->
+        <th>Injected</th>
         <th>Status</th>
         <th>Injection info</th>
         <th>Injection files</th>
@@ -66,23 +78,27 @@
       </tr>
       </thead>
       <tbody>
-      <tr v-for="(row) in filteredData" :key="row.id">
+      <tr v-for="(row) in paginatedData" :key="row.id">
         <td>{{ row.sampleId }}</td>
         <td>{{ row.tissueId }}</td>
         <td>{{ row.rollId }}</td>
         <td>{{ row.sliceId }}</td>
         <td>{{ row.blockId }}</td>
-<!--        <td>{{ row.channels }}</td>-->
-<!--        <td>{{ row.needles }}</td>-->
+        <td>{{ row.injected_num }}</td>
         <td>{{ row.status }}</td>
         <td>
           <el-button type="primary" class="btn" @click="handleViewEdit(row)">View / Edit</el-button>
         </td>
         <td>
-          <el-tooltip
-            content="replace the injection file"
-          >
-            <el-button type="primary" class="btn" :disabled="isGuest || row.imaging_records.length > 0" @click="uploadInjection(row)">Upload</el-button>
+          <el-tooltip content="replace the injection file">
+            <el-button
+                type="primary"
+                class="btn"
+                :disabled="isGuest || row.imaging_records.length > 0"
+                @click="uploadInjection(row)"
+            >
+              Upload
+            </el-button>
           </el-tooltip>
           <el-button type="primary" class="btn" @click="downloadInjection(row)" :disabled="isGuest">Download</el-button>
           <el-button type="primary" class="btn" @click="uploadBrightField(row)" :disabled="isGuest">Bright field data</el-button>
@@ -93,6 +109,63 @@
       </tr>
       </tbody>
     </table>
+
+    <!-- 分页组件 -->
+    <el-pagination
+        @current-change="handlePageChange"
+        :current-page="currentPage"
+        :page-size="pageSize"
+        :total="filteredData.length"
+        layout="prev, pager, next"
+        class="pagination"
+    />
+    <!-- 数据表格区域 -->
+<!--    <table class="data-table">-->
+<!--      <thead>-->
+<!--      <tr>-->
+<!--        <th>Patient ID</th>-->
+<!--        <th>Tissue ID</th>-->
+<!--        <th>Roll ID</th>-->
+<!--        <th>Slice ID</th>-->
+<!--        <th>Block ID</th>-->
+<!--        <th>Injected</th>-->
+<!--&lt;!&ndash;        <th>Channels</th>&ndash;&gt;-->
+<!--&lt;!&ndash;        <th>Needles</th>&ndash;&gt;-->
+<!--        <th>Status</th>-->
+<!--        <th>Injection info</th>-->
+<!--        <th>Injection files</th>-->
+<!--        <th>Imaging info</th>-->
+<!--      </tr>-->
+<!--      </thead>-->
+<!--      <tbody>-->
+<!--      <tr v-for="(row) in filteredData" :key="row.id">-->
+<!--        <td>{{ row.sampleId }}</td>-->
+<!--        <td>{{ row.tissueId }}</td>-->
+<!--        <td>{{ row.rollId }}</td>-->
+<!--        <td>{{ row.sliceId }}</td>-->
+<!--        <td>{{ row.blockId }}</td>-->
+<!--        <td>{{ row.injected_num }}</td>-->
+<!--&lt;!&ndash;        <td>{{ row.channels }}</td>&ndash;&gt;-->
+<!--&lt;!&ndash;        <td>{{ row.needles }}</td>&ndash;&gt;-->
+<!--        <td>{{ row.status }}</td>-->
+<!--        <td>-->
+<!--          <el-button type="primary" class="btn" @click="handleViewEdit(row)">View / Edit</el-button>-->
+<!--        </td>-->
+<!--        <td>-->
+<!--          <el-tooltip-->
+<!--            content="replace the injection file"-->
+<!--          >-->
+<!--            <el-button type="primary" class="btn" :disabled="isGuest || row.imaging_records.length > 0" @click="uploadInjection(row)">Upload</el-button>-->
+<!--          </el-tooltip>-->
+<!--          <el-button type="primary" class="btn" @click="downloadInjection(row)" :disabled="isGuest">Download</el-button>-->
+<!--          <el-button type="primary" class="btn" @click="uploadBrightField(row)" :disabled="isGuest">Bright field data</el-button>-->
+<!--        </td>-->
+<!--        <td>-->
+<!--          <el-button type="primary" class="btn" @click="openImagingDialog(row)">Imaging info</el-button>-->
+<!--        </td>-->
+<!--      </tr>-->
+<!--      </tbody>-->
+<!--    </table>-->
     <el-dialog v-model="editDialogVisible" title="View / Edit Sample" width="600px">
       <el-form :model="editForm" label-width="120px">
         <!-- Patient ID（只读） -->
@@ -624,7 +697,8 @@ const filteredData = computed(() => {
         (!searchQuery.value.sampleId || row.sampleId.includes(searchQuery.value.sampleId)) &&
         (!searchQuery.value.tissueId || row.tissueId.includes(searchQuery.value.tissueId)) &&
         (!searchQuery.value.rollId || row.rollId.includes(searchQuery.value.rollId)) &&
-        (!searchQuery.value.sliceId || row.sliceId.includes(searchQuery.value.sliceId))
+        (!searchQuery.value.sliceId || row.sliceId.includes(searchQuery.value.sliceId))&&
+        (!searchQuery.value.status || row.status.includes(searchQuery.value.status))
     );
   });
 });
@@ -640,6 +714,7 @@ let editForm = ref({
   rollId: '',
   sliceId: '',
   blockId: '--',
+  injected_num: '--',
   channels: 1,
   needles: 1,
   status: 'injected', // 默认状态为 injected
@@ -705,7 +780,12 @@ const searchQuery = ref({
   tissueId: '',
   rollId: '',
   sliceId: '',
+  status: ''
 });
+
+// 分页状态
+const currentPage = ref(1); // 当前页码
+const pageSize = ref(10); // 每页显示的记录数
 
 // 初始化获取数据
 onMounted(() => {
@@ -722,6 +802,18 @@ async function fetchData() {
     console.error('Error fetching data:', error);
     ElMessage.error('Failed to fetch data.');
   }
+}
+
+// 计算分页后的数据
+const paginatedData = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return filteredData.value.slice(start, end);
+});
+
+// 分页切换时的处理函数
+function handlePageChange(page) {
+  currentPage.value = page;
 }
 
 function search() {
@@ -1212,6 +1304,34 @@ async function updateImagingRecordStatus(imagingId, newStatus) {
   }
 }
 
+// async function checkAndUpdateSampleStatus(sampleId) {
+//   try {
+//     const sample = rawData.value.find((s) => s.id === sampleId);
+//     if (!sample) {
+//       ElMessage.error("Sample not found.");
+//       return;
+//     }
+//
+//     const allStatuses = sample.imaging_records.map((record) => record.status);
+//
+//     // 按状态检测顺序：imaged -> marked -> inserted -> matched
+//     const orderedStatuses = ["imaged", "marked", "inserted", "matched"];
+//     for (const status of orderedStatuses) {
+//       if (allStatuses.every((recStatus) => recStatus === status)) {
+//         // 更新样本状态为当前状态
+//         sample.status = status;
+//
+//         // 后端同步状态
+//         await api.put(`/sample_preparation/${sampleId}`,sample);
+//
+//         // ElMessage.success(`Sample ${sampleId} updated to ${status}.`);
+//         return;
+//       }
+//     }
+//   } catch (error) {
+//     console.log(`Failed to update sample ${sampleId} status.`);
+//   }
+// }
 async function checkAndUpdateSampleStatus(sampleId) {
   try {
     const sample = rawData.value.find((s) => s.id === sampleId);
@@ -1220,46 +1340,39 @@ async function checkAndUpdateSampleStatus(sampleId) {
       return;
     }
 
+    // 拿到所有 imaging_records 的状态
     const allStatuses = sample.imaging_records.map((record) => record.status);
 
-    // 按状态检测顺序：imaged -> marked -> inserted -> matched
+    // 定义状态顺序：索引越小表示越慢 / 越早期
     const orderedStatuses = ["imaged", "marked", "inserted", "matched"];
-    for (const status of orderedStatuses) {
-      if (allStatuses.every((recStatus) => recStatus === status)) {
-        // 更新样本状态为当前状态
-        sample.status = status;
 
-        // 后端同步状态
-        await api.put(`/sample_preparation/${sampleId}`,sample);
-
-        // ElMessage.success(`Sample ${sampleId} updated to ${status}.`);
-        return;
-      }
+    // 一个小工具函数：返回该状态在 orderedStatuses 里的索引
+    // 找不到就给一个很大的数字，以便识别出是无效状态
+    // eslint-disable-next-line no-inner-declarations
+    function getPriority(st) {
+      const idx = orderedStatuses.indexOf(st);
+      return idx === -1 ? 999 : idx;
     }
+
+    // 在所有 imaging_records 的状态里，选出“最慢”的那个（即索引最小）
+    // reduce 每次比较优先级，保留优先级更小（更慢）的状态。
+    const lowestStatus = allStatuses.reduce((lowest, current) => {
+      return getPriority(current) < getPriority(lowest) ? current : lowest;
+    }, allStatuses[0]);
+
+    // 更新 sample 的状态为 lowestStatus
+    sample.status = lowestStatus;
+
+    // 调用后端接口更新数据库
+    await api.put(`/sample_preparation/${sampleId}`, sample);
+
+    // 提示成功，可根据实际需要是否保留
+    ElMessage.success(`Sample ${sampleId} updated to ${lowestStatus}.`);
+
   } catch (error) {
-    console.log(`Failed to update sample ${sampleId} status.`);
+    console.log(`Failed to update sample ${sampleId} status.`, error);
   }
 }
-// 更新样本状态
-// async function updateSampleStatus(sampleId, status) {
-//   try {
-//     const sample = rawData.value.find(item => item.id === sampleId);
-//     if (!sample) {
-//       ElMessage.error('Sample not found.');
-//       return;
-//     }
-//     const updatedSample = { ...sample, status };
-//     const response = await api.put(`/sample_preparation/${sampleId}`, updatedSample);
-//     const index = rawData.value.findIndex(item => item.id === sampleId);
-//     if (index > -1) {
-//       rawData.value.splice(index, 1, response.data);
-//       ElMessage.success(`Sample status updated to ${status}.`);
-//     }
-//   } catch (error) {
-//     console.error('Error updating sample status:', error);
-//     ElMessage.error('Failed to update sample status.');
-//   }
-// }
 
 // 打开 imaging dialog
 function openImagingDialog(row) {
@@ -2289,5 +2402,10 @@ function toCell(img) {
   border: 1px solid #999;
   padding: 8px;
   text-align: left;
+}
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
 }
 </style>
