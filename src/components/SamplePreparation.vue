@@ -326,24 +326,25 @@
             <td>{{ img.X_Size }}</td>
             <td>{{ img.File_Size_GB }}</td>
             <td>
-              <button class="btn" @click="viewEditBlock(img)">View / Download</button>
-              <button class="btn" @click="imageMIP(img)">Image MIP</button>
+              <el-button type="primary" class="btn" @click="viewEditBlock(img)">View</el-button>
+              <el-button type="primary" class="btn" @click="imageMIP(img)">Image MIP</el-button>
             </td>
             <td>
-              <button class="btn" @click="uploadImagingData(img)" :disabled="isGuest">Imaging data</button>
-              <button class="btn" @click="uploadImagingMetadata(img)" :disabled="isGuest">Metadata</button>
-              <button class="btn" @click="uploadImagingMarker(img)" :disabled="isGuest">Soma</button>
-              <button class="btn" @click="uploadImagingMatchTable(img)" :disabled="isGuest">Injection matched table</button>
+              <el-button type="primary" class="btn" @click="uploadImagingData(img)" :disabled="isGuest">Imaging data</el-button>
+              <el-button type="primary" class="btn" @click="uploadImagingMetadata(img)" :disabled="isGuest">Metadata</el-button>
+              <el-button type="primary" class="btn" @click="uploadImagingMarker(img)" :disabled="isGuest">Soma</el-button>
+              <el-button type="primary" class="btn" @click="uploadImagingMatchTable(img)" :disabled="isGuest">Injection matched table</el-button>
+              <el-button type="primary" class="btn" @click="downloadImagingFiles(img)" :disabled="isGuest">Download</el-button>
             </td>
             <td>
-              <button class="btn" @click="toCell(img)" :disabled="!(img.status === 'imaged' && img.marked)">To cell</button>
+              <el-button type="primary" class="btn" @click="toCell(img)" :disabled="!(img.status === 'imaged' && img.marked)">To cell</el-button>
             </td>
           </tr>
           </tbody>
         </table>
       </div>
       <template #footer>
-        <el-button type="danger" class="btn" @click="deleteImagingRecords" :disabled="isGuest">Delete</el-button>
+        <el-button type="danger" class="btn" @click="deleteImagingRecords" :disabled="isGuest || isDeleteDisabled">Delete</el-button>
         <el-button type="primary" class="btn" @click="saveImagingRecords" :disabled="isGuest">Save</el-button>
       </template>
     </el-dialog>
@@ -721,18 +722,12 @@ const filteredData = computed(() => {
     return matchSampleId && matchTissueId && matchRollId && matchSliceId && matchStatus;
   });
 });
-// 过滤数据
-// const filteredData = computed(() => {
-//   return rawData.value.filter((row) => {
-//     return (
-//         (!searchQuery.value.sampleId || row.sampleId.includes(searchQuery.value.sampleId)) &&
-//         (!searchQuery.value.tissueId || row.tissueId.includes(searchQuery.value.tissueId)) &&
-//         (!searchQuery.value.rollId || row.rollId.includes(searchQuery.value.rollId)) &&
-//         (!searchQuery.value.sliceId || row.sliceId.includes(searchQuery.value.sliceId))&&
-//         (!searchQuery.value.status || row.status.includes(searchQuery.value.status))
-//     );
-//   });
-// });
+const isDeleteDisabled = computed(() => {
+  return selectedImagingIds.value.some((imagingId) => {
+    const record = imagingRecords.value.find((img) => img.imaging_id === imagingId);
+    return record && ["marked", "matched", "inserted"].includes(record.status);
+  });
+});
 
 // 编辑对话框
 const uploadDialogVisible = ref(false);
@@ -2065,6 +2060,42 @@ function uploadImagingMarker(img) {
 function uploadImagingMatchTable(img) {
   imagingBlockForm.value = { ...img };
   imagingMatchTableDialogVisible.value = true;
+}
+
+async function downloadImagingFiles(img) {
+  try {
+    // 调用后端 API，下载压缩包
+    const response = await api.get(
+        `/download_imaging_records_files/${currentSampleId.value}/${img.imaging_id}`,
+        {
+          responseType: "blob", // 确保文件流可以正确下载
+        }
+    );
+
+    // 创建 Blob 对象
+    const blob = new Blob([response.data], {type: "application/zip"});
+
+    // 生成下载链接
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${currentSampleId.value}_${img.imaging_id}_files.zip`;
+    link.click();
+
+    // 释放 URL 对象
+    window.URL.revokeObjectURL(url);
+
+    // 提示成功消息
+    ElMessage.success("File downloaded successfully.");
+  } catch (error) {
+    console.error("Error downloading imaging files:", error);
+
+    if (error.response && error.response.status === 404) {
+      ElMessage.error("No files found for the selected imaging record.");
+    } else {
+      ElMessage.error("Failed to download files. Please try again.");
+    }
+  }
 }
 
 function validateMetadataFile(file) {
