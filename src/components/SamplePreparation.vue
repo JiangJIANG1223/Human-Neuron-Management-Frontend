@@ -33,6 +33,7 @@
                   <el-select
                       v-model="searchQuery.status"
                       multiple
+                      clearable
                       placeholder="Select the status"
                   >
                     <el-option label="injected" value="injected"></el-option>
@@ -43,6 +44,18 @@
                   </el-select>
                 </el-form-item>
               </el-col>
+              <el-col :span="6">
+              <el-form-item label="Sample Comment">
+                <el-select
+                    v-model="searchQuery.comment"
+                    placeholder="Select the comment status"
+                    clearable
+                >
+                  <el-option label="有" value="true"></el-option>
+                  <el-option label="无" value="false"></el-option>
+                </el-select>
+              </el-form-item>
+            </el-col>
             </el-row>
             <el-col :span="24" class="button-group">
               <el-button type="primary" @click="search" style="margin-left: 10px;">Search</el-button>
@@ -119,53 +132,6 @@
         layout="prev, pager, next"
         class="pagination"
     />
-    <!-- 数据表格区域 -->
-<!--    <table class="data-table">-->
-<!--      <thead>-->
-<!--      <tr>-->
-<!--        <th>Patient ID</th>-->
-<!--        <th>Tissue ID</th>-->
-<!--        <th>Roll ID</th>-->
-<!--        <th>Slice ID</th>-->
-<!--        <th>Block ID</th>-->
-<!--        <th>Injected</th>-->
-<!--&lt;!&ndash;        <th>Channels</th>&ndash;&gt;-->
-<!--&lt;!&ndash;        <th>Needles</th>&ndash;&gt;-->
-<!--        <th>Status</th>-->
-<!--        <th>Injection info</th>-->
-<!--        <th>Injection files</th>-->
-<!--        <th>Imaging info</th>-->
-<!--      </tr>-->
-<!--      </thead>-->
-<!--      <tbody>-->
-<!--      <tr v-for="(row) in filteredData" :key="row.id">-->
-<!--        <td>{{ row.sampleId }}</td>-->
-<!--        <td>{{ row.tissueId }}</td>-->
-<!--        <td>{{ row.rollId }}</td>-->
-<!--        <td>{{ row.sliceId }}</td>-->
-<!--        <td>{{ row.blockId }}</td>-->
-<!--        <td>{{ row.injected_num }}</td>-->
-<!--&lt;!&ndash;        <td>{{ row.channels }}</td>&ndash;&gt;-->
-<!--&lt;!&ndash;        <td>{{ row.needles }}</td>&ndash;&gt;-->
-<!--        <td>{{ row.status }}</td>-->
-<!--        <td>-->
-<!--          <el-button type="primary" class="btn" @click="handleViewEdit(row)">View / Edit</el-button>-->
-<!--        </td>-->
-<!--        <td>-->
-<!--          <el-tooltip-->
-<!--            content="replace the injection file"-->
-<!--          >-->
-<!--            <el-button type="primary" class="btn" :disabled="isGuest || row.imaging_records.length > 0" @click="uploadInjection(row)">Upload</el-button>-->
-<!--          </el-tooltip>-->
-<!--          <el-button type="primary" class="btn" @click="downloadInjection(row)" :disabled="isGuest">Download</el-button>-->
-<!--          <el-button type="primary" class="btn" @click="uploadBrightField(row)" :disabled="isGuest">Bright field data</el-button>-->
-<!--        </td>-->
-<!--        <td>-->
-<!--          <el-button type="primary" class="btn" @click="openImagingDialog(row)">Imaging info</el-button>-->
-<!--        </td>-->
-<!--      </tr>-->
-<!--      </tbody>-->
-<!--    </table>-->
     <el-dialog v-model="editDialogVisible" title="View / Edit Sample" width="600px">
       <el-form :model="editForm" label-width="120px">
         <!-- Patient ID（只读） -->
@@ -188,17 +154,12 @@
         <el-form-item label="Block ID">
           <el-input v-model="editForm.blockId" disabled></el-input>
         </el-form-item>
-<!--        &lt;!&ndash; Channels（可编辑） &ndash;&gt;-->
-<!--        <el-form-item label="Channels">-->
-<!--          <el-input v-model="editForm.channels" type="number"></el-input>-->
-<!--        </el-form-item>-->
-<!--        &lt;!&ndash; Needles（可编辑） &ndash;&gt;-->
-<!--        <el-form-item label="Needles">-->
-<!--          <el-input v-model="editForm.needles" type="number"></el-input>-->
-<!--        </el-form-item>-->
         <!-- Status（只读） -->
         <el-form-item label="Status">
           <el-input v-model="editForm.status" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="Comment">
+          <el-input v-model="editForm.comment" type="text"></el-input>
         </el-form-item>
       </el-form>
       <!-- Footer Buttons -->
@@ -691,35 +652,56 @@ defineProps({
 // 原始数据
 const rawData = ref([]);
 const filteredData = computed(() => {
+  const searchQueryValue = searchQuery.value;
+
   return rawData.value.filter((row) => {
-    // 1) 处理 sampleId、tissueId、rollId、sliceId 的 AND 逻辑
-    const matchSampleId =
-        !searchQuery.value.sampleId ||
-        row.sampleId.includes(searchQuery.value.sampleId);
-    const matchTissueId =
-        !searchQuery.value.tissueId ||
-        row.tissueId.includes(searchQuery.value.tissueId);
-    const matchRollId =
-        !searchQuery.value.rollId ||
-        row.rollId.includes(searchQuery.value.rollId);
-    const matchSliceId =
-        !searchQuery.value.sliceId ||
-        row.sliceId.includes(searchQuery.value.sliceId);
-    let matchStatus = true;
-    if (searchQuery.value.status && searchQuery.value.status.length > 0) {
-      // 确保 searchQuery.value.status 一定是数组
-      const searchStatusArray = Array.isArray(searchQuery.value.status)
-          ? searchQuery.value.status
-          : [searchQuery.value.status];
-      let rowStatusArray = [];
-      if (Array.isArray(row.status)) {
-        rowStatusArray = [...row.status];
-      } else if (typeof row.status === "string") {
-        rowStatusArray = [row.status];
-      }
-      matchStatus = rowStatusArray.some((item) => searchStatusArray.includes(item));
+    // 提前解构查询条件，避免每次都访问 `searchQuery.value`
+    const {
+      sampleId,
+      tissueId,
+      rollId,
+      sliceId,
+      status,
+      comment,
+    } = searchQueryValue;
+
+    // 提前判断是否需要进行某个字段的检查
+    const hasSampleId = !!sampleId;
+    const hasTissueId = !!tissueId;
+    const hasRollId = !!rollId;
+    const hasSliceId = !!sliceId;
+    const hasStatus = Array.isArray(status) && status.length > 0;
+    const hasComment = comment !== undefined;
+
+    // 处理 sampleId 的匹配
+    if (hasSampleId && !row.sampleId.includes(sampleId)) return false;
+
+    // 处理 tissueId 的匹配
+    if (hasTissueId && !row.tissueId.includes(tissueId)) return false;
+
+    // 处理 rollId 的匹配
+    if (hasRollId && !row.rollId.includes(rollId)) return false;
+
+    // 处理 sliceId 的匹配
+    if (hasSliceId && !row.sliceId.includes(sliceId)) return false;
+
+    // 处理 status 的匹配
+    if (hasStatus) {
+      const rowStatusArray =
+          Array.isArray(row.status) ? row.status : [row.status];
+      if (!rowStatusArray.some((item) => status.includes(item))) return false;
     }
-    return matchSampleId && matchTissueId && matchRollId && matchSliceId && matchStatus;
+
+    // 处理 comment 的匹配
+    if (hasComment) {
+      const isCommentNonEmpty =
+          row.comment !== null && row.comment !== undefined && row.comment.length !== 0;
+      if (comment === "true" && !isCommentNonEmpty) return false;
+      if (comment === "false" && isCommentNonEmpty) return false;
+    }
+
+    // 如果通过所有条件，保留该行数据
+    return true;
   });
 });
 const isDeleteDisabled = computed(() => {
@@ -741,6 +723,7 @@ let editForm = ref({
   sliceId: '',
   blockId: '--',
   injected_num: '--',
+  comment: '',
   channels: 1,
   needles: 1,
   status: 'injected', // 默认状态为 injected
@@ -806,7 +789,8 @@ const searchQuery = ref({
   tissueId: '',
   rollId: '',
   sliceId: '',
-  status: ''
+  status: '',
+  comment: '',
 });
 
 // 分页状态
@@ -843,6 +827,7 @@ function handlePageChange(page) {
 }
 
 function search() {
+  console.log(searchQuery.value);
   const statusArray = Array.isArray(searchQuery.value.status)
       ? [...searchQuery.value.status] // 用扩展运算符拷贝一份
       : [];
@@ -868,13 +853,17 @@ function search() {
         searchQuery.value.status.length === 0 ||
         statusArray.some((item) => row.status.includes(item));
 
+    const matchComment =
+        (searchQuery.value.comment === 'true' && String(row.comment).trim() !== "")
+
 
     return (
         matchSampleId &&
         matchTissueId &&
         matchRollId &&
         matchSliceId &&
-        matchStatus
+        matchStatus &&
+        matchComment
     );
   });
 }
