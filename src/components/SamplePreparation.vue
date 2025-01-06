@@ -635,15 +635,15 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { ElMessage, ElMessageBox} from 'element-plus';
-import axios from 'axios';
+import axios from '@/axios';
 
 // 配置 Axios 实例
-const api = axios.create({
-  baseURL: 'http://localhost:8000/api', // 根据实际情况修改
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+// const axios = axios.create({
+//   baseURL: 'http://localhost:8000/api', // 根据实际情况修改
+//   headers: {
+//     'Content-Type': 'application/json',
+//   },
+// });
 
 // eslint-disable-next-line no-undef
 defineProps({
@@ -805,7 +805,7 @@ onMounted(() => {
 // 从后端获取数据
 async function fetchData() {
   try {
-    const response = await api.get('/sample_preparation');
+    const response = await axios.get('/api/sample_preparation');
     rawData.value = response.data;
     console.log('rawData',rawData);
   } catch (error) {
@@ -926,7 +926,7 @@ async function uploadAllFiles() {
     formData.append('files', file.raw);  // 将每个文件添加到 formData 中
   });
 
-  await api.post('/upload_files', formData, {
+  await axios.post('/api/upload_files', formData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }
@@ -1009,7 +1009,7 @@ async function uploadInjectionFile() {
     return;
   }
   // 检查文件是否已经存在
-  const checkFileExistsResponse = await api.get(`/check_sample_file_exists?filename=${file.name}`);
+  const checkFileExistsResponse = await axios.get(`/api/check_sample_file_exists?filename=${file.name}`);
   if (checkFileExistsResponse.data.exists) {
     try {
       // 显示确认对话框
@@ -1026,7 +1026,7 @@ async function uploadInjectionFile() {
       const formData = new FormData();
       formData.append('file', file);
 
-      api.post('/upload_injection_file', formData, {
+      axios.post('/api/upload_injection_file', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
         .then(() => {
@@ -1080,7 +1080,7 @@ async function uploadInjectionFile() {
     const formData = new FormData();
     formData.append('file', file);
 
-    api.post('/upload_injection_file', formData, {
+    axios.post('/api/upload_injection_file', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
         .then(() => {
@@ -1145,7 +1145,7 @@ async function saveUploadedData() {
   }
   try {
     const newSample = { ...editForm.value, imaging_records: [] }; // 新建时 imaging_records 为空
-    const response = await api.post('/sample_preparation', newSample);
+    const response = await axios.post('/api/sample_preparation', newSample);
 
     // 检查响应状态
     if (response && response.status === 200) {
@@ -1204,7 +1204,7 @@ async function saveSampleData() {
     // PUT 到后端更新
   try {
     const updatedSample = {...editForm.value, imaging_records: editForm.value.imaging_records || []};
-    const response = await api.put(`/sample_preparation/${editForm.value.id}`, updatedSample);
+    const response = await axios.put(`/api/sample_preparation/${editForm.value.id}`, updatedSample);
     const index = rawData.value.findIndex(item => item.id === editForm.value.id);
     if (index > -1) {
       rawData.value.splice(index, 1, response.data);
@@ -1223,7 +1223,7 @@ function openInjectionFilesDialog() {
   loadFolders();  // 加载已有子文件夹
 }
 function loadFolders() {
-  api.get('/folders').then(response => {
+  axios.get('/api/folders').then(response => {
     console.log('folders response',response);
     folderList.value = response.data.folders;
     if (folderList.value.length > 0) {
@@ -1238,7 +1238,7 @@ function downloadFolder() {
     return;
   }
   // 请求下载文件夹，设置 responseType 为 'blob'
-  api.get(`/download_folder?folder=${selectedFolder.value}`, {
+  axios.get(`/api/download_folder?folder=${selectedFolder.value}`, {
     responseType: 'blob'  // 必须设置 responseType 为 'blob' 来接收二进制数据
   })
       .then(response => {
@@ -1284,7 +1284,7 @@ async function downloadInjection(row) {
   let sample_preparation_id = `${row.sampleId}-${row.tissueId}-${row.rollId}-${row.sliceId}${bNumber}`;
   try {
     // 使用 Axios 请求文件
-    const response = await api.get(`/get_injection_file/${sample_preparation_id}`, {
+    const response = await axios.get(`/api/get_injection_file/${sample_preparation_id}`, {
       responseType: "blob", // 确保返回二进制数据
     });
 
@@ -1334,7 +1334,7 @@ async function updateImagingRecordStatus(imagingId, newStatus) {
     record.status = newStatus;
 
     // 后端同步状态
-    await api.put(`/imaging_records/${record.sample_preparation_id}/${imagingId}`, record);
+    await axios.put(`/api/imaging_records/${record.sample_preparation_id}/${imagingId}`, record);
 
     // 检查是否需要更新 Sample 的状态
     await checkAndUpdateSampleStatus(record.sample_preparation_id);
@@ -1363,7 +1363,7 @@ async function updateImagingRecordStatus(imagingId, newStatus) {
 //         sample.status = status;
 //
 //         // 后端同步状态
-//         await api.put(`/sample_preparation/${sampleId}`,sample);
+//         await axios.put(`/api/sample_preparation/${sampleId}`,sample);
 //
 //         // ElMessage.success(`Sample ${sampleId} updated to ${status}.`);
 //         return;
@@ -1405,7 +1405,7 @@ async function checkAndUpdateSampleStatus(sampleId) {
     sample.status = lowestStatus;
 
     // 调用后端接口更新数据库
-    await api.put(`/sample_preparation/${sampleId}`, sample);
+    await axios.put(`/api/sample_preparation/${sampleId}`, sample);
 
     // 提示成功，可根据实际需要是否保留
     ElMessage.success(`Sample ${sampleId} updated to ${lowestStatus}.`);
@@ -1510,7 +1510,7 @@ async function uploadImagingInfoFiles() {
   const formData = new FormData();
   formData.append('metadata_file', imagingFileList.value[0].raw);
   console.log('formdata',formData)
-  api.post(`/upload_imaging_metadata/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`, formData, {
+  axios.post(`/api/upload_imaging_metadata/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
       .then(response => {
@@ -1561,8 +1561,8 @@ async function uploadImagingMetadataFiles() {
 
   try {
     // 检查文件是否已存在
-    const checkResponse = await api.get(
-        `/check_imaging_record_file_exists/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
+    const checkResponse = await axios.get(
+        `/api/check_imaging_record_file_exists/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
         {
           params: {
             filename: fileName,
@@ -1591,8 +1591,8 @@ async function uploadImagingMetadataFiles() {
     // 上传文件（覆盖模式）
     const formData = new FormData();
     formData.append('metadata_file', file.raw);
-    const uploadResponse = await api.post(
-        `/upload_imaging_metadata/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
+    const uploadResponse = await axios.post(
+        `/api/upload_imaging_metadata/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
         formData,
         {
           headers: { 'Content-Type': 'multipart/form-data' },
@@ -1623,7 +1623,7 @@ async function uploadImagingMetadataFiles() {
 //   const formData = new FormData();
 //   formData.append('marker_file', markerFilesList.value[0].raw);
 //   console.log('formData',formData)
-//   api.post('/upload_imaging_marker', formData, {
+//   axios.post('/api/upload_imaging_marker', formData, {
 //     headers: { 'Content-Type': 'multipart/form-data' }
 //   })
 //       .then(response => {
@@ -1672,8 +1672,8 @@ async function uploadImagingMatchTableFiles() {
     }
 
     // 检查文件是否已经存在
-    const checkResponse = await api.get(
-        `/check_imaging_record_file_exists/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
+    const checkResponse = await axios.get(
+        `/api/check_imaging_record_file_exists/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
         {
           params: { filename: file.name },
         }
@@ -1702,8 +1702,8 @@ async function uploadImagingMatchTableFiles() {
     const formData = new FormData();
     formData.append('matchtable_file', file.raw);
 
-    const response = await api.post(
-        `/upload_imaging_match_table/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
+    const response = await axios.post(
+        `/api/upload_imaging_match_table/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
         formData,
         {
           headers: { 'Content-Type': 'multipart/form-data' },
@@ -1759,8 +1759,8 @@ async function uploadImagingAnnotationFiles() {
     }
 
     // 检查文件是否已经存在
-    const checkResponse = await api.get(
-        `/check_imaging_record_file_exists/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
+    const checkResponse = await axios.get(
+        `/api/check_imaging_record_file_exists/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
         {
           params: { filename: file.name },
         }
@@ -1789,8 +1789,8 @@ async function uploadImagingAnnotationFiles() {
     const formData = new FormData();
     formData.append('annotation_file', file.raw);
 
-    const response = await api.post(
-        `/upload_imaging_annotation_file/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
+    const response = await axios.post(
+        `/api/upload_imaging_annotation_file/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
         formData,
         {
           headers: { 'Content-Type': 'multipart/form-data' },
@@ -1851,7 +1851,7 @@ async function newImagingRecord() {
     };
 
     // 发送 POST 请求创建新记录
-    const response = await api.post('/imaging_records', newRecord);
+    const response = await axios.post('/api/imaging_records', newRecord);
 
     if (response && response.status === 200) {
       const createdRecord = response.data;
@@ -1927,7 +1927,7 @@ async function deleteImagingRecords() {
 
     // 执行批量删除请求
     for (const record of recordsToDelete) {
-      await api.delete(`/imaging_records/${record.sample_preparation_id}/${record.imaging_id}`);
+      await axios.delete(`/api/imaging_records/${record.sample_preparation_id}/${record.imaging_id}`);
     }
 
     // 本地更新 imagingRecords
@@ -1965,7 +1965,7 @@ async function saveImagingRecords() {
       return;
     }
     const updatedSample = { ...sampleToUpdate, imaging_records: imagingRecords.value };
-    const response = await api.put(`/sample_preparation/${currentSampleId.value}`, updatedSample);
+    const response = await axios.put(`/api/sample_preparation/${currentSampleId.value}`, updatedSample);
     const index = rawData.value.findIndex(item => item.id === currentSampleId.value);
     if (index > -1) {
       rawData.value.splice(index, 1, response.data);
@@ -2004,7 +2004,7 @@ function viewEditBlock(img) {
 //     };
 //     console.log(imagingBlockForm.value);
 //     // 发送 PUT 请求更新记录
-//     const response = await api.put(`/imaging_records/${imagingBlockForm.value.sample_preparation_id}/${imagingBlockForm.value.imaging_id}`, updatedRecord);
+//     const response = await axios.put(`/api/imaging_records/${imagingBlockForm.value.sample_preparation_id}/${imagingBlockForm.value.imaging_id}`, updatedRecord);
 //
 //     // 更新本地表格数据
 //     const index = imagingRecords.value.findIndex(record => record.imaging_id === imagingBlockForm.value.imaging_id);
@@ -2053,9 +2053,9 @@ function uploadImagingMatchTable(img) {
 
 async function downloadImagingFiles(img) {
   try {
-    // 调用后端 API，下载压缩包
-    const response = await api.get(
-        `/download_imaging_records_files/${currentSampleId.value}/${img.imaging_id}`,
+    // 调用后端 axios，下载压缩包
+    const response = await axios.get(
+        `/api/download_imaging_records_files/${currentSampleId.value}/${img.imaging_id}`,
         {
           responseType: "blob", // 确保文件流可以正确下载
         }
@@ -2186,7 +2186,7 @@ function handleBrightFieldDataRemove() {
 function uploadImagingMapFiles() {
   const formData = new FormData();
   formData.append('imaging_map_file', imagingMapFilesList.value[0].raw);
-  api.post('/upload_imaging_map', formData, {
+  axios.post('/api/upload_imaging_map', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
       .then(response => {
@@ -2213,7 +2213,7 @@ function uploadImagingMapFiles() {
 }
 async function fetchImagingMap() {
   try {
-    const response = await api.get(`/get_imaging_map/${currentSampleId.value}`, {
+    const response = await axios.get(`/api/get_imaging_map/${currentSampleId.value}`, {
       responseType: "blob", // 确保返回的是 Blob 数据
     });
 
@@ -2230,7 +2230,7 @@ async function fetchImagingMap() {
 
 async function fetchImagingMIP(imaging_id) {
   try {
-    const response = await api.get(`/get_imaging_mip/${currentSampleId.value}/${imaging_id}`, {
+    const response = await axios.get(`/api/get_imaging_mip/${currentSampleId.value}/${imaging_id}`, {
       responseType: "blob", // 确保返回的是 Blob 数据
     });
 
@@ -2252,7 +2252,7 @@ async function uploadImagingDataFiles() {
 
   try {
     // 检查文件是否已经存在
-    const checkResponse = await api.get(`/check_imaging_record_file_exists/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`, {
+    const checkResponse = await axios.get(`/api/check_imaging_record_file_exists/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`, {
       params: {
         filename: imagingDataFilesList.value[0].name,
       },
@@ -2278,7 +2278,7 @@ async function uploadImagingDataFiles() {
     }
 
     // 如果文件不存在，或者用户选择覆盖，继续上传
-    const response = await api.post(`/upload_imaging_data/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`, formData, {
+    const response = await axios.post(`/api/upload_imaging_data/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
 
@@ -2313,7 +2313,7 @@ async function uploadImagingDataFiles() {
 //     formData.append('bright_field_data_files', item.raw, item.name);
 //   }
 //
-//   await api.post(`/upload_bright_field_data/${currentSampleId.value}`, formData, {
+//   await axios.post(`/api/upload_bright_field_data/${currentSampleId.value}`, formData, {
 //     headers: { 'Content-Type': 'multipart/form-data' }
 //   })
 //       .then(response => {
@@ -2344,7 +2344,7 @@ async function uploadBrightFieldDataFiles() {
 
   try {
     // 获取灌注表中的 Id 列
-    const response = await api.get(`/get_injection_ids/${currentSampleId.value}`);
+    const response = await axios.get(`/api/get_injection_ids/${currentSampleId.value}`);
     const idList = response.data;
 
     // 验证上传文件名是否符合 Id 列中的值
@@ -2362,7 +2362,7 @@ async function uploadBrightFieldDataFiles() {
       formData.append('bright_field_data_files', item.raw, item.name);
     }
 
-    const uploadResponse = await api.post(`/upload_bright_field_data/${currentSampleId.value}`, formData, {
+    const uploadResponse = await axios.post(`/api/upload_bright_field_data/${currentSampleId.value}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
 
