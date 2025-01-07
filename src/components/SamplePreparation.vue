@@ -107,7 +107,7 @@
             <el-button
                 type="primary"
                 class="btn"
-                :disabled="isGuest || row.imaging_records.length > 0"
+                :disabled="isGuest || row.imaging_records.length > 0 || row.status !== 'injected'"
                 @click="uploadInjection(row)"
             >
               Upload
@@ -263,11 +263,11 @@
             <th>Imaging ID</th>
             <th>Producer</th>
             <th>Status</th>
-            <th>Channels</th>
-            <th>Z_Size</th>
-            <th>Y_Size</th>
-            <th>X_Size</th>
-            <th>File_Size_GB</th>
+<!--            <th>Channels</th>-->
+<!--            <th>Z_Size</th>-->
+<!--            <th>Y_Size</th>-->
+<!--            <th>X_Size</th>-->
+<!--            <th>File_Size_GB</th>-->
             <th>View Options</th>
             <th>Upload Files</th>
             <th>Upload to SQL</th>
@@ -281,11 +281,11 @@
             <td>{{ img.imaging_id }}</td>
             <td>{{ img.producer }}</td>
             <td>{{ img.status }}</td>
-            <td>{{ img.Channels }}</td>
-            <td>{{ img.Z_Size }}</td>
-            <td>{{ img.Y_Size }}</td>
-            <td>{{ img.X_Size }}</td>
-            <td>{{ img.File_Size_GB }}</td>
+<!--            <td>{{ img.Channels }}</td>-->
+<!--            <td>{{ img.Z_Size }}</td>-->
+<!--            <td>{{ img.Y_Size }}</td>-->
+<!--            <td>{{ img.X_Size }}</td>-->
+<!--            <td>{{ img.File_Size_GB }}</td>-->
             <td>
               <el-button type="primary" class="btn" @click="viewEditBlock(img)">View</el-button>
               <el-button type="primary" class="btn" @click="imageMIP(img)">Image MIP</el-button>
@@ -322,8 +322,8 @@
         <el-form-item label="Status">
           <el-input v-model="imagingBlockForm.status" disabled></el-input>
         </el-form-item>
-        <el-form-item label="Channels">
-          <el-input v-model="imagingBlockForm.Channels" disabled></el-input>
+        <el-form-item label="Dyes">
+          <el-input v-model="imagingBlockForm.Dyes" disabled></el-input>
         </el-form-item>
         <el-form-item label="Z_Size">
           <el-input v-model="imagingBlockForm.Z_Size" disabled></el-input>
@@ -747,7 +747,7 @@ const imagingBlockForm = ref({
   sample_preparation_id: null,
   status: 'imaged', // 默认状态为 injected
   producer: '',
-  Channels: 1,
+  Dyes: 1,
   Z_Size:0.0,
   Y_Size:0.0,
   X_Size:0.0,
@@ -1720,6 +1720,7 @@ async function uploadImagingMatchTableFiles() {
 
       // 更新记录状态为 "matched"
       await updateImagingRecordStatus(imagingBlockForm.value.imaging_id, 'matched');
+      await checkAndUpdateSampleStatus(currentSampleIndex.value)
     } else {
       ElMessage.error('Failed to upload file.');
     }
@@ -1807,6 +1808,7 @@ async function uploadImagingAnnotationFiles() {
 
       // 更新记录状态为 "matched"
       await updateImagingRecordStatus(imagingBlockForm.value.imaging_id, 'marked');
+      await checkAndUpdateSampleStatus(currentSampleIndex.value)
     } else {
       ElMessage.error('Failed to upload file.');
     }
@@ -1870,9 +1872,11 @@ async function newImagingRecord() {
       }
 
       ElMessage.success('New imaging record added.');
+      await checkAndUpdateSampleStatus(currentSampleIndex.value);
 
       // 上传文件
       await uploadImagingInfoFiles();
+
       uploadImageDialogVisible.value = false;
     } else {
       // 处理非 200 状态码
@@ -1944,8 +1948,8 @@ async function deleteImagingRecords() {
     // 清空选中状态
     selectedImagingIds.value = [];
     imagingSelectAll.value = false;
-
     ElMessage.success('Selected imaging records deleted.');
+    await checkAndUpdateSampleStatus(currentSampleIndex.value);
   } catch (error) {
     console.error('Error deleting imaging records:', error);
     ElMessage.error('Failed to delete imaging records.');
