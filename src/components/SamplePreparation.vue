@@ -51,8 +51,8 @@
                     placeholder="Select the comment status"
                     clearable
                 >
-                  <el-option label="有" value="true"></el-option>
-                  <el-option label="无" value="false"></el-option>
+                  <el-option label="With comment" value="true"></el-option>
+                  <el-option label="None" value="false"></el-option>
                 </el-select>
               </el-form-item>
             </el-col>
@@ -157,6 +157,24 @@
         <!-- Status（只读） -->
         <el-form-item label="Status">
           <el-input v-model="editForm.status" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="Injected Number">
+          <el-input v-model="editForm.injected_num" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="Dyes Number">
+          <el-input v-model="editForm.dyes" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="Dyes Name">
+          <el-input v-model="editForm.dye_name" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="Needles Number">
+          <el-input v-model="editForm.needles" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="Perfusion User">
+          <el-input v-model="editForm.perfusion_user" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="Perfusion Date">
+          <el-input v-model="editForm.perfusion_date" disabled></el-input>
         </el-form-item>
         <el-form-item label="Comment">
           <el-input v-model="editForm.comment" type="text"></el-input>
@@ -269,7 +287,7 @@
 <!--            <th>X_Size</th>-->
 <!--            <th>File_Size_GB</th>-->
             <th>View Options</th>
-            <th>Upload Files</th>
+            <th>Upload & Download</th>
             <th>Upload to SQL</th>
           </tr>
           </thead>
@@ -305,8 +323,10 @@
         </table>
       </div>
       <template #footer>
-        <el-button type="danger" class="btn" @click="deleteImagingRecords" :disabled="isGuest || isDeleteDisabled">Delete</el-button>
-        <el-button type="primary" class="btn" @click="saveImagingRecords" :disabled="isGuest">Save</el-button>
+        <div style="display: flex; justify-content: space-between; width: 100%;">
+          <el-button type="danger" class="btn" @click="deleteImagingRecords" :disabled="isGuest || isDeleteDisabled">Delete</el-button>
+          <el-button type="primary" class="btn" @click="saveImagingRecords" :disabled="isGuest">Save</el-button>
+        </div>
       </template>
     </el-dialog>
 
@@ -341,7 +361,7 @@
       <template #footer>
         <button class="btn" @click="editImageDialogVisible = false">Cancel</button>
 <!--        <button class="btn" @click="saveImagingBlock">Save</button>-->
-        <button class="btn" @click="downloadImagingBlock" :disabled="isGuest">Download</button>
+<!--        <button class="btn" @click="downloadImagingBlock" :disabled="isGuest">Download</button>-->
       </template>
     </el-dialog>
 
@@ -722,12 +742,14 @@ let editForm = ref({
   rollId: '',
   sliceId: '',
   blockId: '--',
-  injected_num: '--',
+  injected_num: 0,
   comment: '',
-  channels: 1,
+  dyes: 1,
   needles: 1,
   status: 'injected', // 默认状态为 injected
-  operator: '',
+  perfusion_user: '',
+  perfusion_date: '',
+  dye_name:''
 });
 let fileList = ref([]);
 
@@ -952,11 +974,14 @@ function resetForm() {
     tissueId: '',
     rollId: '',
     sliceId: '',
+    injected_num: 0,
     blockId: '--', // 默认值
-    channels: 0,
+    dyes: 0,
     needles: 0,
     status: 'injected',
-    operator: '',
+    perfusion_user: '',
+    perfusion_date: '',
+    dye_name:''
   };
   fileList.value = [];
 }
@@ -1000,8 +1025,6 @@ async function uploadInjectionFile() {
   let regex = new RegExp(
         `${currentSampleId.value}\\.csv$`
   );
-  console.log('Current Patient ID:', currentSampleId.value);
-  console.log('Uploaded File Name:', fileName);
   if (!regex.test(fileName)) {
     ElMessage.error(
         `Invalid file name. Expected format: ${currentSampleId.value}.csv`
@@ -1026,165 +1049,240 @@ async function uploadInjectionFile() {
       const formData = new FormData();
       formData.append('file', file);
 
-      axios.post('/api/upload_injection_file', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      })
-        .then(() => {
-          ElMessage.success('CSV uploaded to database successfully');
-          fileList.value = [];
-          uploadInjectionFileVisible.value = false;
-        })
-        .catch(error => {
-          if (error.response && error.response.data.detail) {
-            const errorMessage = error.response.data.detail;
-            if (errorMessage.includes('CSV file must contain an ID column.')) {
-              ElMessage.error('File must contain an ID column. Please check and re-upload.');
-            } else if (errorMessage.includes('File name does not match its ID column')) {
-              ElMessage.error('File name and its ID column do not match. Please check and re-upload.');
-            } else if (errorMessage.includes('Missing columns:')) {
-              ElMessage.error(`Missing columns: ${errorMessage.split('Missing columns: ')[1]}`);
-            } else if (errorMessage.includes('Columns with missing values:')) {
-              ElMessage.error(`Columns with missing values: ${errorMessage.split('Columns with missing values: ')[1]}`);
-            } else if (errorMessage.includes('No matching sample found')) {
-              ElMessage.error('No matching sample found. Please check and re-upload.');
-            } else if (errorMessage.includes('Abnormal value in dye_name column.')) {
-              ElMessage.error('Abnormal value in dye_name column. Please check and re-upload.');
-            } else if (errorMessage.includes('Concentration contents error.')) {
-              ElMessage.error('Concentration contents error. Please check and re-upload.');
-            } else if (errorMessage.includes('Unable to convert date format.')) {
-              ElMessage.error('Unable to convert date format. Please check and re-upload.');
-              // } else if (errorMessage.includes('Database insertion failed')) {
-              //   ElMessage.error('Table format error. Please check and re-upload.');
-            } else if (errorMessage.includes('Database insertion failed:')) {
-              ElMessage.error(`Database insertion failed. ${errorMessage.split('Database insertion failed:')[1]}`);
-            } else if (errorMessage.includes('Error processing CSV file:')) {
-              ElMessage.error(`Error processing CSV file. ${errorMessage.split('Error processing CSV file:')[1]}`);
-            } else {
-              ElMessage.error(errorMessage);
-            }
-          } else {
-            ElMessage.error('CSV upload to database failed.');
+      try {
+        const response = await axios.post('/api/upload_injection_file', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+            // Include authorization headers if required
+            // 'Authorization': `Bearer ${token}`
           }
         });
-      return 'continue'
+
+        if (response.status === 200) {
+          ElMessage.success(response.data.message || 'Injection file uploaded successfully.');
+          return response; // Contains sample_preparation_id and other parameters
+        } else {
+          ElMessage.error(response.data.detail || 'Injection file upload failed.');
+          return null;
+        }
+      } catch (error) {
+        if (error.response && error.response.data && error.response.data.detail) {
+          ElMessage.error(error.response.data.detail);
+        } else if (error.message) {
+          ElMessage.error(`Upload Error: ${error.message}`);
+        } else {
+          ElMessage.error('An unexpected error occurred during file upload.');
+        }
+        return null;
+      }
     } catch (error) {
       // 用户选择“取消”，终止上传
       console.log('User canceled overwrite. Aborting upload.');
       uploadDialogVisible.value = false
       ElMessageBox.close()
-      return 'finish'
+      return null
     }
   }
   else {
     ElMessageBox.close()
     const formData = new FormData();
     formData.append('file', file);
+    try {
+      const response = await axios.post('/api/upload_injection_file', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+          // Include authorization headers if required
+          // 'Authorization': `Bearer ${token}`
+        }
+      });
 
-    axios.post('/api/upload_injection_file', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
-        .then(() => {
-          ElMessage.success('CSV uploaded to database successfully');
-          fileList.value = [];
-          uploadInjectionFileVisible.value = false;
-        })
-        .catch(error => {
-          if (error.response && error.response.data.detail) {
-            const errorMessage = error.response.data.detail;
-            if (errorMessage.includes('CSV file must contain an ID column.')) {
-              ElMessage.error('File must contain an ID column. Please check and re-upload.');
-            } else if (errorMessage.includes('File name does not match its ID column')) {
-              ElMessage.error('File name and its ID column do not match. Please check and re-upload.');
-            } else if (errorMessage.includes('Missing columns:')) {
-              ElMessage.error(`Missing columns: ${errorMessage.split('Missing columns: ')[1]}`);
-            } else if (errorMessage.includes('Columns with missing values:')) {
-              ElMessage.error(`Columns with missing values: ${errorMessage.split('Columns with missing values: ')[1]}`);
-            } else if (errorMessage.includes('No matching sample found')) {
-              ElMessage.error('No matching sample found. Please check and re-upload.');
-            } else if (errorMessage.includes('Abnormal value in dye_name column.')) {
-              ElMessage.error('Abnormal value in dye_name column. Please check and re-upload.');
-            } else if (errorMessage.includes('Concentration contents error.')) {
-              ElMessage.error('Concentration contents error. Please check and re-upload.');
-            } else if (errorMessage.includes('Unable to convert date format.')) {
-              ElMessage.error('Unable to convert date format. Please check and re-upload.');
-              // } else if (errorMessage.includes('Database insertion failed')) {
-              //   ElMessage.error('Table format error. Please check and re-upload.');
-            } else if (errorMessage.includes('Database insertion failed:')) {
-              ElMessage.error(`Database insertion failed. ${errorMessage.split('Database insertion failed:')[1]}`);
-            } else if (errorMessage.includes('Error processing CSV file:')) {
-              ElMessage.error(`Error processing CSV file. ${errorMessage.split('Error processing CSV file:')[1]}`);
-            } else {
-              ElMessage.error(errorMessage);
-            }
-          } else {
-            ElMessage.error('CSV upload to database failed.');
-          }
-        });
-    return 'continue'
+      if (response.status === 200) {
+        ElMessage.success(response.data.message || 'Injection file uploaded successfully.');
+        return response; // Contains sample_preparation_id and other parameters
+      } else {
+        ElMessage.error(response.data.detail || 'Injection file upload failed.');
+        return null;
+      }
+    } catch (error) {
+      if (error.response && error.response.data.detail) {
+        const errorMessage = error.response.data.detail;
+        if (errorMessage.includes('CSV file must contain an ID column.')) {
+          ElMessage.error('File must contain an ID column. Please check and re-upload.');
+        } else if (errorMessage.includes('File name does not match its ID column')) {
+          ElMessage.error('File name and its ID column do not match. Please check and re-upload.');
+        } else if (errorMessage.includes('Missing columns:')) {
+          ElMessage.error(`Missing columns: ${errorMessage.split('Missing columns: ')[1]}`);
+        } else if (errorMessage.includes('Columns with missing values:')) {
+          ElMessage.error(`Columns with missing values: ${errorMessage.split('Columns with missing values: ')[1]}`);
+        } else if (errorMessage.includes('No matching sample found')) {
+          ElMessage.error('No matching sample found. Please check and re-upload.');
+        } else if (errorMessage.includes('Abnormal value in dye_name column.')) {
+          ElMessage.error('Abnormal value in dye_name column. Please check and re-upload.');
+        } else if (errorMessage.includes('Concentration contents error.')) {
+          ElMessage.error('Concentration contents error. Please check and re-upload.');
+        } else if (errorMessage.includes('Unable to convert date format.')) {
+          ElMessage.error('Unable to convert date format. Please check and re-upload.');
+          // } else if (errorMessage.includes('Database insertion failed')) {
+          //   ElMessage.error('Table format error. Please check and re-upload.');
+        } else if (errorMessage.includes('Database insertion failed:')) {
+          ElMessage.error(`Database insertion failed. ${errorMessage.split('Database insertion failed:')[1]}`);
+        } else if (errorMessage.includes('Error processing CSV file:')) {
+          ElMessage.error(`Error processing CSV file. ${errorMessage.split('Error processing CSV file:')[1]}`);
+        } else {
+          ElMessage.error(errorMessage);
+        }
+      } else {
+        ElMessage.error('CSV upload to database failed.');
+      }
+      return null;
+    }
   }
 }
 
+// async function saveUploadedData() {
+//   console.log(editForm.value)
+//   if (!editForm.value.sampleId || !editForm.value.tissueId || !editForm.value.rollId || !editForm.value.sliceId) {
+//     ElMessage.error('SampleID, TissueID, RollID, and SliceID are required.');
+//     return;
+//   }
+//
+//   const formData = new FormData();
+//   formData.append('sampleId', editForm.value.sampleId);
+//   formData.append('tissueId', editForm.value.tissueId);
+//   formData.append('rollId', editForm.value.rollId);
+//   formData.append('sliceId', editForm.value.sliceId);
+//   formData.append('blockId', editForm.value.blockId);
+//   formData.append('status', editForm.value.status);
+//   currentSampleId.value = `${editForm.value.sampleId}-${editForm.value.tissueId}-${editForm.value.rollId}-${editForm.value.sliceId}`;
+//   // 判断 Block ID 是否为 '--'，如果不是，则添加到末尾
+//   if (editForm.value.blockId && editForm.value.blockId !== '--') {
+//     currentSampleId.value += `-${editForm.value.blockId}`;
+//   }
+//   try {
+//     const newSample = { ...editForm.value, imaging_records: [] }; // 新建时 imaging_records 为空
+//     const response = await axios.post('/api/sample_preparation', newSample);
+//
+//     // 检查响应状态
+//     if (response && response.status === 200) {
+//       // 成功创建样本
+//       rawData.value.push(response.data);
+//       ElMessage.success('New sample added.');
+//
+//       // 上传 Injection 文件
+//       let result = await uploadInjectionFile();
+//       if (result === 'continue') {
+//         ElMessage.success('Injection file uploaded to database successfully.');
+//       } else {
+//         ElMessage.error('Upload cancelled.');
+//       }
+//     } else if (response && response.status === 400) {
+//       // 显示服务器返回的错误信息
+//       if (response.data && response.data.detail) {
+//         ElMessage.error(response.data.detail);
+//       } else {
+//         ElMessage.error('Bad Request: Invalid data.');
+//       }
+//     } else {
+//       // 未知的错误状态
+//       ElMessage.error(`Unexpected status code: ${response.status}`);
+//     }
+//   } catch (error) {
+//     // 捕获网络错误或其他问题
+//     if (error.response && error.response.data && error.response.data.detail) {
+//       // 显示后端返回的错误信息
+//       ElMessage.error(error.response.data.detail);
+//     } else if (error.message) {
+//       // 显示一般错误信息
+//       ElMessage.error(`Error: ${error.message}`);
+//     } else {
+//       ElMessage.error('An unexpected error occurred. Please try again.');
+//     }
+//   }
+// }
 async function saveUploadedData() {
-  console.log(editForm.value)
-  if (!editForm.value.sampleId || !editForm.value.tissueId || !editForm.value.rollId || !editForm.value.sliceId) {
+  console.log(editForm.value);
+
+  // Step 1: Validate Required Fields
+  const { sampleId, tissueId, rollId, sliceId, blockId, status } = editForm.value;
+  if (!sampleId || !tissueId || !rollId || !sliceId) {
     ElMessage.error('SampleID, TissueID, RollID, and SliceID are required.');
     return;
   }
 
-  const formData = new FormData();
-  formData.append('sampleId', editForm.value.sampleId);
-  formData.append('tissueId', editForm.value.tissueId);
-  formData.append('rollId', editForm.value.rollId);
-  formData.append('sliceId', editForm.value.sliceId);
-  formData.append('blockId', editForm.value.blockId);
-  formData.append('status', editForm.value.status);
-  currentSampleId.value = `${editForm.value.sampleId}-${editForm.value.tissueId}-${editForm.value.rollId}-${editForm.value.sliceId}`;
-  // 判断 Block ID 是否为 '--'，如果不是，则添加到末尾
-  if (editForm.value.blockId && editForm.value.blockId !== '--') {
-    currentSampleId.value += `-${editForm.value.blockId}`;
-  }
+  // Step 2: Upload the Injection File First
+  let uploadParams;
   try {
-    const newSample = { ...editForm.value, imaging_records: [] }; // 新建时 imaging_records 为空
+    const uploadResult = await uploadInjectionFile();
+    console.log('uploadResult',uploadResult);
+    // Assuming uploadInjectionFile returns an object with 'success' and 'data' properties
+    if (uploadResult.status === 200) {
+      ElMessage.success('Injection file uploaded successfully.');
+      uploadParams = uploadResult.data; // Parameters returned from backend after file processing
+    } else {
+      ElMessage.error(uploadResult.message || 'Injection file upload failed.');
+      return; // Halt the process if upload failed
+    }
+  } catch (error) {
+    // Handle errors from uploadInjectionFile
+    if (error.response && error.response.data && error.response.data.detail) {
+      ElMessage.error(error.response.data.detail);
+    } else if (error.message) {
+      ElMessage.error(`Upload Error: ${error.message}`);
+    } else {
+      ElMessage.error('An unexpected error occurred during file upload.');
+    }
+    return; // Halt the process on error
+  }
+
+  // Step 3: Prepare Sample Record Data
+  const newSample = {
+    sampleId,
+    tissueId,
+    rollId,
+    sliceId,
+    blockId,
+    status,
+    ...uploadParams, // Include parameters from the file upload
+    imaging_records: [] // Initialize imaging_records as empty
+  };
+
+  // Construct the currentSampleId
+  currentSampleId.value = `${sampleId}-${tissueId}-${rollId}-${sliceId}`;
+  if (blockId && blockId !== '--') {
+    currentSampleId.value += `-${blockId}`;
+  }
+
+  // Step 4: Create the Sample Record
+  try {
     const response = await axios.post('/api/sample_preparation', newSample);
 
-    // 检查响应状态
+    // Check response status
     if (response && response.status === 200) {
-      // 成功创建样本
+      // Successfully created the sample
       rawData.value.push(response.data);
-      ElMessage.success('New sample added.');
-
-      // 上传 Injection 文件
-      let result = await uploadInjectionFile();
-      if (result === 'continue') {
-        ElMessage.success('Injection file uploaded to database successfully.');
-      } else {
-        ElMessage.error('Upload cancelled.');
-      }
+      ElMessage.success('New sample added successfully.');
     } else if (response && response.status === 400) {
-      // 显示服务器返回的错误信息
+      // Handle Bad Request errors
       if (response.data && response.data.detail) {
         ElMessage.error(response.data.detail);
       } else {
         ElMessage.error('Bad Request: Invalid data.');
       }
     } else {
-      // 未知的错误状态
+      // Handle unexpected status codes
       ElMessage.error(`Unexpected status code: ${response.status}`);
     }
   } catch (error) {
-    // 捕获网络错误或其他问题
+    // Handle network errors or other issues during sample creation
     if (error.response && error.response.data && error.response.data.detail) {
-      // 显示后端返回的错误信息
       ElMessage.error(error.response.data.detail);
     } else if (error.message) {
-      // 显示一般错误信息
       ElMessage.error(`Error: ${error.message}`);
     } else {
-      ElMessage.error('An unexpected error occurred. Please try again.');
+      ElMessage.error('An unexpected error occurred while creating the sample.');
     }
   }
 }
-
 // 取消上传
 function cancelUpload() {
   uploadDialogVisible.value = false;
@@ -1985,7 +2083,7 @@ async function saveImagingRecords() {
 // 全选/反选 Imaging Records
 function toggleSelectAllImaging() {
   if (imagingSelectAll.value) {
-    selectedImagingIds.value = imagingRecords.value.map(r => r.id);
+    selectedImagingIds.value = imagingRecords.value.map(r => r.imaging_id);
   } else {
     selectedImagingIds.value = [];
   }
@@ -2023,10 +2121,6 @@ function viewEditBlock(img) {
 //   }
 // }
 
-// 下载 Imaging Block
-function downloadImagingBlock() {
-  console.log('Download imaging block data for:', imagingBlockForm.value);
-}
 
 // MIP, imaging data, metadata, somas, injection matched table 等功能
 function imageMIP(img) {
