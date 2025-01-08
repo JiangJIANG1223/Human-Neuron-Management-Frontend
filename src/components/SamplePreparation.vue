@@ -56,6 +56,36 @@
                 </el-select>
               </el-form-item>
             </el-col>
+              <el-col :span="6">
+                <el-form-item label="Dyes">
+                  <el-select
+                      v-model="searchQuery.dyes"
+                      multiple
+                      clearable
+                      placeholder="Select the number of dyes"
+                  >
+                    <el-option label="1" value="1"></el-option>
+                    <el-option label="2" value="2"></el-option>
+                    <el-option label="3" value="3"></el-option>
+                    <el-option label="4" value="4"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
+                <el-form-item label="Needles">
+                  <el-select
+                      v-model="searchQuery.needles"
+                      multiple
+                      clearable
+                      placeholder="Select the number of needles"
+                  >
+                    <el-option label="1" value="1"></el-option>
+                    <el-option label="2" value="2"></el-option>
+                    <el-option label="3" value="3"></el-option>
+                    <el-option label="4" value="4"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
             </el-row>
             <el-col :span="24" class="button-group">
               <el-button type="primary" @click="search" style="margin-left: 10px;">Search</el-button>
@@ -683,6 +713,8 @@ const filteredData = computed(() => {
       sliceId,
       status,
       comment,
+      dyes,
+      needles
     } = searchQueryValue;
 
     // 提前判断是否需要进行某个字段的检查
@@ -692,6 +724,9 @@ const filteredData = computed(() => {
     const hasSliceId = !!sliceId;
     const hasStatus = Array.isArray(status) && status.length > 0;
     const hasComment = comment !== undefined;
+    const hasDyes = Array.isArray(dyes) && dyes.length > 0;
+    const hasNeedles = Array.isArray(needles) && needles.length > 0;
+
 
     // 处理 sampleId 的匹配
     if (hasSampleId && !row.sampleId.includes(sampleId)) return false;
@@ -719,6 +754,10 @@ const filteredData = computed(() => {
       if (comment === "true" && !isCommentNonEmpty) return false;
       if (comment === "false" && isCommentNonEmpty) return false;
     }
+    if (hasDyes && !dyes.includes(String(row.dyes))) return false;
+
+    // 处理 needles 的匹配
+    if (hasNeedles && !needles.includes(String(row.needles))) return false;
 
     // 如果通过所有条件，保留该行数据
     return true;
@@ -813,6 +852,8 @@ const searchQuery = ref({
   sliceId: '',
   status: '',
   comment: '',
+  dyes: [], // 默认检索 1, 2, 3, 4
+  needles: [],
 });
 
 // 分页状态
@@ -896,6 +937,10 @@ function resetSearch() {
     tissueId: '',
     rollId: '',
     sliceId: '',
+    status: '',
+    comment: '',
+    dyes: [], // 默认检索 1, 2, 3, 4
+    needles: [],
   };
   filteredData.value = rawData.value; // 重置为所有数据
 }
