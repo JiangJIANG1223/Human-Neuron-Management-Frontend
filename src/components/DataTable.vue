@@ -8,9 +8,9 @@
           <el-button @click="exploreSelected" >Explore</el-button>
         </div>
         <div class="right-buttons">
-          <el-button type="primary" @click="openInjectionFilesDialog" :disabled="isGuest">Injection Files</el-button>
-          <el-button type="primary" @click="openImagingInfoDialog" :disabled="isGuest">Imaging Info</el-button>
-          <el-button type="primary" @click="openRecordBookDialog" :disabled="isGuest">Record Book</el-button>
+          <el-button type="primary" @click="openInjectionFilesDialog" disabled>Injection Files</el-button>
+          <el-button type="primary" @click="openImagingInfoDialog" disabled>Imaging Info</el-button>
+          <el-button type="primary" @click="openRecordBookDialog" disabled>Record Book</el-button>
         </div>
       </div>
       <div class="select-all-container" style="display: flex; align-items: center; margin-top: 30px; margin-bottom: -8px; padding-left: 13px;">
