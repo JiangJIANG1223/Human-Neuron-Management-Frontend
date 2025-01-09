@@ -26,8 +26,8 @@
       <el-table-column label="操作" width="180">
         <template v-slot="scope">
              <div class="action-buttons">
-                  <el-button size="small" type="primary" @click="viewData(scope.row)">View</el-button>
-                  <el-button size="small" @click="download_SampleFiles(scope.row)":loading="samplefile_downloadLoading">Download</el-button>
+                  <el-button size="small" type="primary" @click="viewData(scope.row)" :disabled="isGuest">View</el-button>
+                  <el-button size="small" @click="download_SampleFiles(scope.row)" :loading="samplefile_downloadLoading" :disabled="isGuest">Download</el-button>
             </div>
         </template>
       </el-table-column>
