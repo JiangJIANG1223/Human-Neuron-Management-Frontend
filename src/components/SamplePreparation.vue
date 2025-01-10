@@ -2356,17 +2356,28 @@ function uploadImagingMapFiles() {
 }
 async function fetchImagingMap() {
   try {
-    const response = await axios.get(`/api/get_imaging_map/${currentSampleId.value}`, {
-      responseType: "blob", // 确保返回的是 Blob 数据
-    });
+    const response = await axios.get(`/api/get_imaging_map/${currentSampleId.value}`,
+        {
+          responseType: "blob", // 确保返回的是 Blob 数据
+        });
 
     // 检查响应是否是 Blob 类型
     if (response.data && response.data instanceof Blob) {
+      if (imagingMapUrl.value) {
+        URL.revokeObjectURL(imagingMapUrl.value); // 清除旧的 Blob URL
+      }
       imagingMapUrl.value = URL.createObjectURL(response.data); // 创建 Blob URL
     } else {
+      imagingMapUrl.value = ''
       console.error("Invalid response data");
     }
   } catch (error) {
+    console.error("Failed to fetch image:", error);
+    console.log("imageMapUrl",imagingMapUrl);
+    if (imagingMapUrl.value) {
+      URL.revokeObjectURL(imagingMapUrl.value); // 清除旧的 Blob URL
+    }
+    imagingMapUrl.value = '';
     console.error("Failed to fetch image:", error);
   }
 }
@@ -2379,6 +2390,9 @@ async function fetchImagingMIP(imaging_id) {
 
     // 检查响应是否是 Blob 类型
     if (response.data && response.data instanceof Blob) {
+      if (imagingMIPUrl.value) {
+        URL.revokeObjectURL(imagingMIPUrl.value); // 清除旧的 Blob URL
+      }
       imagingMIPUrl.value = URL.createObjectURL(response.data); // 创建 Blob URL
     } else {
       imagingMIPUrl.value = '';
@@ -2386,6 +2400,11 @@ async function fetchImagingMIP(imaging_id) {
     }
   } catch (error) {
     console.error("Failed to fetch image:", error);
+    console.log("imageMIPUrl",imagingMapUrl);
+    if (imagingMIPUrl.value) {
+      URL.revokeObjectURL(imagingMIPUrl.value); // 清除旧的 Blob URL
+    }
+    imagingMIPUrl.value = '';
   }
 }
 
@@ -2444,41 +2463,6 @@ async function uploadImagingDataFiles() {
   }
 }
 
-// async function uploadBrightFieldDataFiles() {
-//   if (brightFieldDataFilesList.value.length === 0) {
-//     ElMessage.error('No files selected for upload.');
-//     return;
-//   }
-//
-//   const formData = new FormData();
-//   for (const item of brightFieldDataFilesList.value) {
-//     // 普通文件
-//     formData.append('bright_field_data_files', item.raw, item.name);
-//   }
-//
-//   await axios.post(`/api/upload_bright_field_data/${currentSampleId.value}`, formData, {
-//     headers: { 'Content-Type': 'multipart/form-data' }
-//   })
-//       .then(response => {
-//         // Handle success
-//         ElMessage.success('File uploaded successfully');
-//         const uploadedFiles = response.data.uploaded_files || [];
-//         // Remove uploaded files from the file list
-//         brightFieldDataFilesList.value = brightFieldDataFilesList.value.filter(file => !uploadedFiles.includes(file.name));
-//       })
-//       .catch(error => {
-//         // let error = 'Files upload failed';
-//         if (error.response && error.response.data.detail) {
-//           if (typeof error.response.data.detail === 'string') {
-//             // errorMessage = error.response.data.detail;
-//           } else if (typeof error.response.data.detail === 'object') {
-//             // errorMessage = error.response.data.detail.error || 'Files upload failed';
-//           }
-//         }
-//         // ElMessage.error(errorMessage);
-//       });
-//
-// }
 async function uploadBrightFieldDataFiles() {
   if (brightFieldDataFilesList.value.length === 0) {
     ElMessage.error('No files selected for upload.');
