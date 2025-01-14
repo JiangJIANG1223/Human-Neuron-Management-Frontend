@@ -137,7 +137,7 @@
             <el-button
                 type="primary"
                 class="btn"
-                :disabled="isGuest || row.imaging_records.length > 0 || row.status !== 'injected'"
+                :disabled="isGuest || row.imaging_records.length > 0 || row.status === 'inserted' || row.status === 'matched'"
                 @click="uploadInjection(row)"
             >
               Upload
