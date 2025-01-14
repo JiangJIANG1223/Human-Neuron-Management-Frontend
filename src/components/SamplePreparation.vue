@@ -1105,6 +1105,7 @@ async function uploadInjectionFile() {
 
         if (response.status === 200) {
           ElMessage.success(response.data.message || 'Injection file uploaded successfully.');
+          fileList.value = []
           return response; // Contains sample_preparation_id and other parameters
         } else {
           ElMessage.error(response.data.detail || 'Injection file upload failed.');
@@ -1114,6 +1115,7 @@ async function uploadInjectionFile() {
         if (error.response && error.response.data && error.response.data.detail) {
           ElMessage.error(error.response.data.detail);
         } else if (error.message) {
+          console.log(error.message);
           ElMessage.error(`Upload Error: ${error.message}`);
         } else {
           ElMessage.error('An unexpected error occurred during file upload.');
@@ -1246,7 +1248,11 @@ async function uploadInjectionFile() {
 // }
 async function saveUploadedData() {
   console.log(editForm.value);
-
+  currentSampleId.value = `${editForm.value.sampleId}-${editForm.value.tissueId}-${editForm.value.rollId}-${editForm.value.sliceId}`;
+  // 判断 Block ID 是否为 '--'，如果不是，则添加到末尾
+  if (editForm.value.blockId && editForm.value.blockId !== '--') {
+    currentSampleId.value += `-${editForm.value.blockId}`;
+  }
   // Step 1: Validate Required Fields
   const { sampleId, tissueId, rollId, sliceId, blockId, status } = editForm.value;
   if (!sampleId || !tissueId || !rollId || !sliceId) {
