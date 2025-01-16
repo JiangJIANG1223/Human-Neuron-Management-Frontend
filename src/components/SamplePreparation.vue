@@ -232,7 +232,7 @@
           <el-upload
               class="upload-demo"
               drag
-              :multiple="false"
+              multiple
               :file-list="fileList"
               :before-upload="parseFileName"
               :on-change="handleFileChange"
@@ -1069,10 +1069,9 @@ function handleViewEdit(row) {
   editForm.value = { ...row };
   editDialogVisible.value = true;
 }
-function handleFileChange(file) {
-  console.log(file);
-  fileList.value = [file];
-  parseFileName(file);
+function handleFileChange(file,filelist) {
+  fileList.value = filelist;
+  // parseFileName(file);
 }
 function handleFileRemove() {
   fileList.value = [];
@@ -1218,155 +1217,314 @@ async function uploadInjectionFile() {
     }
   }
 }
+async function uploadInjectionFile_multi (injection_file) {
+  if (fileList.value.length === 0) {
+    ElMessage.error('Please select a CSV file.');
+    return;
+  }
+  const file =injection_file.raw;
+  // 检查文件是否已经存在
+  const checkFileExistsResponse = await axios.get(`/api/check_sample_file_exists?filename=${file.name}`);
+  if (checkFileExistsResponse.data.exists) {
+    try {
+      // 显示确认对话框
+      await ElMessageBox.confirm(
+          'File with the same name already exists. Do you want to overwrite it?',
+          {
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'No',
+            type: 'warning',
+          }
+      );
+      console.log('User confirmed overwrite. Proceeding with upload...');
+      ElMessageBox.close()
+      const formData = new FormData();
+      formData.append('file', file);
 
+      try {
+        const response = await axios.post('/api/upload_injection_file', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+            // Include authorization headers if required
+            // 'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.status === 200) {
+          ElMessage.success(response.data.message || 'Injection file uploaded successfully.');
+          const index = fileList.value.indexOf(injection_file);
+          if (index > -1) {
+            fileList.value.splice(index, 1);
+          }
+          return response; // Contains sample_preparation_id and other parameters
+        } else {
+          ElMessage.error(response.data.detail || 'Injection file upload failed.');
+          return null;
+        }
+      } catch (error) {
+        if (error.response && error.response.data && error.response.data.detail) {
+          ElMessage.error(error.response.data.detail);
+        } else if (error.message) {
+          console.log(error.message);
+          ElMessage.error(`Upload Error: ${error.message}`);
+        } else {
+          ElMessage.error('An unexpected error occurred during file upload.');
+        }
+        return null;
+      }
+    } catch (error) {
+      // 用户选择“取消”，终止上传
+      console.log('User canceled overwrite. Aborting upload.');
+      uploadDialogVisible.value = false
+      ElMessageBox.close()
+      return null
+    }
+  }
+  else {
+    ElMessageBox.close()
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await axios.post('/api/upload_injection_file', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+          // Include authorization headers if required
+          // 'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.status === 200) {
+        ElMessage.success(response.data.message || 'Injection file uploaded successfully.');
+        return response; // Contains sample_preparation_id and other parameters
+      } else {
+        ElMessage.error(response.data.detail || 'Injection file upload failed.');
+        return null;
+      }
+    } catch (error) {
+      if (error.response && error.response.data.detail) {
+        const errorMessage = error.response.data.detail;
+        if (errorMessage.includes('CSV file must contain an ID column.')) {
+          ElMessage.error('File must contain an ID column. Please check and re-upload.');
+        } else if (errorMessage.includes('File name does not match its ID column')) {
+          ElMessage.error('File name and its ID column do not match. Please check and re-upload.');
+        } else if (errorMessage.includes('Missing columns:')) {
+          ElMessage.error(`Missing columns: ${errorMessage.split('Missing columns: ')[1]}`);
+        } else if (errorMessage.includes('Columns with missing values:')) {
+          ElMessage.error(`Columns with missing values: ${errorMessage.split('Columns with missing values: ')[1]}`);
+        } else if (errorMessage.includes('No matching sample found')) {
+          ElMessage.error('No matching sample found. Please check and re-upload.');
+        } else if (errorMessage.includes('Abnormal value in dye_name column.')) {
+          ElMessage.error('Abnormal value in dye_name column. Please check and re-upload.');
+        } else if (errorMessage.includes('Concentration contents error.')) {
+          ElMessage.error('Concentration contents error. Please check and re-upload.');
+        } else if (errorMessage.includes('Unable to convert date format.')) {
+          ElMessage.error('Unable to convert date format. Please check and re-upload.');
+          // } else if (errorMessage.includes('Database insertion failed')) {
+          //   ElMessage.error('Table format error. Please check and re-upload.');
+        } else if (errorMessage.includes('Database insertion failed:')) {
+          ElMessage.error(`Database insertion failed. ${errorMessage.split('Database insertion failed:')[1]}`);
+        } else if (errorMessage.includes('Error processing CSV file:')) {
+          ElMessage.error(`Error processing CSV file. ${errorMessage.split('Error processing CSV file:')[1]}`);
+        } else {
+          ElMessage.error(errorMessage);
+        }
+      } else {
+        ElMessage.error('CSV upload to database failed.');
+      }
+      return null;
+    }
+  }
+}
+async function saveUploadedData() {
+  // 如果没有文件，直接返回
+  if (!fileList.value || fileList.value.length === 0) {
+    ElMessage.warning('No files to upload.');
+    return;
+  }
+  const filesToUpload = [...fileList.value];
+  // 遍历每个文件
+  for (const file of filesToUpload) {
+    console.log("filename",file.name);
+    // Step 1: 解析文件名
+    const fileName = file.name.replace('.csv', ''); // 去掉文件扩展名
+    const parts = fileName.split('-'); // 按照 '-' 分割文件名
+
+    const sampleId = parts[0] || '';
+    const tissueId = parts[1] || '';
+    const rollId = parts[2] || '';
+    const sliceId = parts[3] || '';
+    const blockId = parts[4] || '--'; // 如果没有 blockId，填充为 '--'
+
+    if (!sampleId || !tissueId || !rollId || !sliceId) {
+      ElMessage.error(
+          `File "${file.name}" is missing required IDs (SampleID, TissueID, RollID, or SliceID). Skipping...`
+      );
+      continue; // 跳过当前文件，处理下一个
+    }
+
+    // Step 2: 上传文件（示例中假设 uploadInjectionFile 接收 File 作为参数）
+    let uploadParams;
+    try {
+      const uploadResult = await uploadInjectionFile_multi(file);
+      console.log('uploadResult for:', file.name, uploadResult);
+      if (uploadResult.status === 200) {
+        ElMessage.success(`File "${file.name}" uploaded successfully.`);
+        uploadParams = uploadResult.data;
+      } else {
+        ElMessage.error(
+            uploadResult.message ||
+            `Injection file "${file.name}" upload failed. Skipping this file...`
+        );
+        continue; // 上传失败，跳过当前文件
+      }
+    } catch (error) {
+      if (error.response && error.response.data && error.response.data.detail) {
+        ElMessage.error(error.response.data.detail);
+      } else if (error.message) {
+        ElMessage.error(`Upload Error: ${error.message}`);
+      } else {
+        ElMessage.error(
+            `An unexpected error occurred during file "${file.name}" upload.`
+        );
+      }
+      continue; // 上传出现异常，跳过当前文件
+    }
+
+    // Step 3: 构造新样本数据
+    const newSample = {
+      sampleId,
+      tissueId,
+      rollId,
+      sliceId,
+      blockId,
+      status, // 假设 status 是外层可用的变量
+      ...uploadParams,
+      imaging_records: []
+    };
+
+    // 根据 fileName 拼接出当前 sampleId
+    currentSampleId.value = `${sampleId}-${tissueId}-${rollId}-${sliceId}`;
+    if (blockId && blockId !== '--') {
+      currentSampleId.value += `-${blockId}`;
+    }
+
+    // Step 4: 创建样本记录
+    try {
+      const response = await axios.post('/api/sample_preparation', newSample);
+      if (response && response.status === 200) {
+        rawData.value.push(response.data);
+        ElMessage.success(`New sample added successfully for file "${file.name}".`);
+      } else if (response && response.status === 400) {
+        if (response.data && response.data.detail) {
+          ElMessage.error(response.data.detail);
+        } else {
+          ElMessage.error('Bad Request: Invalid data.');
+        }
+      } else {
+        ElMessage.error(`Unexpected status code: ${response.status}`);
+      }
+    } catch (error) {
+      if (error.response && error.response.data && error.response.data.detail) {
+        ElMessage.error(error.response.data.detail);
+      } else if (error.message) {
+        ElMessage.error(`Error: ${error.message}`);
+      } else {
+        ElMessage.error(
+            `An unexpected error occurred while creating the sample for file "${file.name}".`
+        );
+      }
+    }
+  } // end for loop
+}
 // async function saveUploadedData() {
-//   console.log(editForm.value)
-//   if (!editForm.value.sampleId || !editForm.value.tissueId || !editForm.value.rollId || !editForm.value.sliceId) {
-//     ElMessage.error('SampleID, TissueID, RollID, and SliceID are required.');
-//     return;
-//   }
-//
-//   const formData = new FormData();
-//   formData.append('sampleId', editForm.value.sampleId);
-//   formData.append('tissueId', editForm.value.tissueId);
-//   formData.append('rollId', editForm.value.rollId);
-//   formData.append('sliceId', editForm.value.sliceId);
-//   formData.append('blockId', editForm.value.blockId);
-//   formData.append('status', editForm.value.status);
+//   console.log(editForm.value);
 //   currentSampleId.value = `${editForm.value.sampleId}-${editForm.value.tissueId}-${editForm.value.rollId}-${editForm.value.sliceId}`;
 //   // 判断 Block ID 是否为 '--'，如果不是，则添加到末尾
 //   if (editForm.value.blockId && editForm.value.blockId !== '--') {
 //     currentSampleId.value += `-${editForm.value.blockId}`;
 //   }
+//   // Step 1: Validate Required Fields
+//   const { sampleId, tissueId, rollId, sliceId, blockId, status } = editForm.value;
+//   if (!sampleId || !tissueId || !rollId || !sliceId) {
+//     ElMessage.error('SampleID, TissueID, RollID, and SliceID are required.');
+//     return;
+//   }
+//
+//   // Step 2: Upload the Injection File First
+//   let uploadParams;
 //   try {
-//     const newSample = { ...editForm.value, imaging_records: [] }; // 新建时 imaging_records 为空
+//     const uploadResult = await uploadInjectionFile();
+//     console.log('uploadResult',uploadResult);
+//     // Assuming uploadInjectionFile returns an object with 'success' and 'data' properties
+//     if (uploadResult.status === 200) {
+//       ElMessage.success('Injection file uploaded successfully.');
+//       uploadParams = uploadResult.data; // Parameters returned from backend after file processing
+//     } else {
+//       ElMessage.error(uploadResult.message || 'Injection file upload failed.');
+//       return; // Halt the process if upload failed
+//     }
+//   } catch (error) {
+//     // Handle errors from uploadInjectionFile
+//     if (error.response && error.response.data && error.response.data.detail) {
+//       ElMessage.error(error.response.data.detail);
+//     } else if (error.message) {
+//       ElMessage.error(`Upload Error: ${error.message}`);
+//     } else {
+//       ElMessage.error('An unexpected error occurred during file upload.');
+//     }
+//     return; // Halt the process on error
+//   }
+//
+//   // Step 3: Prepare Sample Record Data
+//   const newSample = {
+//     sampleId,
+//     tissueId,
+//     rollId,
+//     sliceId,
+//     blockId,
+//     status,
+//     ...uploadParams, // Include parameters from the file upload
+//     imaging_records: [] // Initialize imaging_records as empty
+//   };
+//
+//   // Construct the currentSampleId
+//   currentSampleId.value = `${sampleId}-${tissueId}-${rollId}-${sliceId}`;
+//   if (blockId && blockId !== '--') {
+//     currentSampleId.value += `-${blockId}`;
+//   }
+//
+//   // Step 4: Create the Sample Record
+//   try {
 //     const response = await axios.post('/api/sample_preparation', newSample);
 //
-//     // 检查响应状态
+//     // Check response status
 //     if (response && response.status === 200) {
-//       // 成功创建样本
+//       // Successfully created the sample
 //       rawData.value.push(response.data);
-//       ElMessage.success('New sample added.');
-//
-//       // 上传 Injection 文件
-//       let result = await uploadInjectionFile();
-//       if (result === 'continue') {
-//         ElMessage.success('Injection file uploaded to database successfully.');
-//       } else {
-//         ElMessage.error('Upload cancelled.');
-//       }
+//       ElMessage.success('New sample added successfully.');
 //     } else if (response && response.status === 400) {
-//       // 显示服务器返回的错误信息
+//       // Handle Bad Request errors
 //       if (response.data && response.data.detail) {
 //         ElMessage.error(response.data.detail);
 //       } else {
 //         ElMessage.error('Bad Request: Invalid data.');
 //       }
 //     } else {
-//       // 未知的错误状态
+//       // Handle unexpected status codes
 //       ElMessage.error(`Unexpected status code: ${response.status}`);
 //     }
 //   } catch (error) {
-//     // 捕获网络错误或其他问题
+//     // Handle network errors or other issues during sample creation
 //     if (error.response && error.response.data && error.response.data.detail) {
-//       // 显示后端返回的错误信息
 //       ElMessage.error(error.response.data.detail);
 //     } else if (error.message) {
-//       // 显示一般错误信息
 //       ElMessage.error(`Error: ${error.message}`);
 //     } else {
-//       ElMessage.error('An unexpected error occurred. Please try again.');
+//       ElMessage.error('An unexpected error occurred while creating the sample.');
 //     }
 //   }
 // }
-async function saveUploadedData() {
-  console.log(editForm.value);
-  currentSampleId.value = `${editForm.value.sampleId}-${editForm.value.tissueId}-${editForm.value.rollId}-${editForm.value.sliceId}`;
-  // 判断 Block ID 是否为 '--'，如果不是，则添加到末尾
-  if (editForm.value.blockId && editForm.value.blockId !== '--') {
-    currentSampleId.value += `-${editForm.value.blockId}`;
-  }
-  // Step 1: Validate Required Fields
-  const { sampleId, tissueId, rollId, sliceId, blockId, status } = editForm.value;
-  if (!sampleId || !tissueId || !rollId || !sliceId) {
-    ElMessage.error('SampleID, TissueID, RollID, and SliceID are required.');
-    return;
-  }
 
-  // Step 2: Upload the Injection File First
-  let uploadParams;
-  try {
-    const uploadResult = await uploadInjectionFile();
-    console.log('uploadResult',uploadResult);
-    // Assuming uploadInjectionFile returns an object with 'success' and 'data' properties
-    if (uploadResult.status === 200) {
-      ElMessage.success('Injection file uploaded successfully.');
-      uploadParams = uploadResult.data; // Parameters returned from backend after file processing
-    } else {
-      ElMessage.error(uploadResult.message || 'Injection file upload failed.');
-      return; // Halt the process if upload failed
-    }
-  } catch (error) {
-    // Handle errors from uploadInjectionFile
-    if (error.response && error.response.data && error.response.data.detail) {
-      ElMessage.error(error.response.data.detail);
-    } else if (error.message) {
-      ElMessage.error(`Upload Error: ${error.message}`);
-    } else {
-      ElMessage.error('An unexpected error occurred during file upload.');
-    }
-    return; // Halt the process on error
-  }
-
-  // Step 3: Prepare Sample Record Data
-  const newSample = {
-    sampleId,
-    tissueId,
-    rollId,
-    sliceId,
-    blockId,
-    status,
-    ...uploadParams, // Include parameters from the file upload
-    imaging_records: [] // Initialize imaging_records as empty
-  };
-
-  // Construct the currentSampleId
-  currentSampleId.value = `${sampleId}-${tissueId}-${rollId}-${sliceId}`;
-  if (blockId && blockId !== '--') {
-    currentSampleId.value += `-${blockId}`;
-  }
-
-  // Step 4: Create the Sample Record
-  try {
-    const response = await axios.post('/api/sample_preparation', newSample);
-
-    // Check response status
-    if (response && response.status === 200) {
-      // Successfully created the sample
-      rawData.value.push(response.data);
-      ElMessage.success('New sample added successfully.');
-    } else if (response && response.status === 400) {
-      // Handle Bad Request errors
-      if (response.data && response.data.detail) {
-        ElMessage.error(response.data.detail);
-      } else {
-        ElMessage.error('Bad Request: Invalid data.');
-      }
-    } else {
-      // Handle unexpected status codes
-      ElMessage.error(`Unexpected status code: ${response.status}`);
-    }
-  } catch (error) {
-    // Handle network errors or other issues during sample creation
-    if (error.response && error.response.data && error.response.data.detail) {
-      ElMessage.error(error.response.data.detail);
-    } else if (error.message) {
-      ElMessage.error(`Error: ${error.message}`);
-    } else {
-      ElMessage.error('An unexpected error occurred while creating the sample.');
-    }
-  }
-}
 // 取消上传
 function cancelUpload() {
   uploadDialogVisible.value = false;
