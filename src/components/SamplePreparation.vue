@@ -97,13 +97,20 @@
     </el-card>
     <div style="display: flex; justify-content: space-between;">
       <div>
-        <el-tooltip content="新建注射记录表">
+        <el-tooltip content="新建灌注记录">
           <el-button type="primary" class="btn" @click="handleNew" :disabled="isGuest">New</el-button>
         </el-tooltip>
+        <el-tooltip content="下载灌注表">
+          <el-button type="primary" class="btn" @click="downloadInjectionRecords" :disabled="isGuest">Download Injection</el-button>
+        </el-tooltip>
+        <el-tooltip content="下载成像表">
+          <el-button type="primary" class="btn" @click="downloadImagingRecords" :disabled="isGuest">Download Imaging</el-button>
+        </el-tooltip>
       </div>
-
-      <!-- 表单外的操作按钮：Cache, Inspect -->
-      <el-button type="primary" class="btn" @click="openInjectionFilesDialog" :disabled="isGuest">Injection Files</el-button>
+      <div>
+        <el-button type="primary" class="btn" @click="sortData">{{sortText}}</el-button>
+        <el-button type="primary" class="btn" @click="openInjectionFilesDialog" :disabled="isGuest">Injection Files</el-button>
+      </div>
     </div>
     <table class="data-table">
       <thead>
@@ -159,7 +166,7 @@
         :current-page="currentPage"
         :page-size="pageSize"
         :total="filteredData.length"
-        layout="prev, pager, next"
+        layout="prev, pager, next, jumper"
         class="pagination"
     />
     <el-dialog v-model="editDialogVisible" title="View / Edit Sample" width="600px">
@@ -236,16 +243,6 @@
             <div class="el-upload__text">Drag .csv file here or click to upload</div>
           </el-upload>
         </el-form-item>
-
-<!--        &lt;!&ndash; Channels &ndash;&gt;-->
-<!--        <el-form-item label="Channels Number">-->
-<!--          <el-input v-model.number="editForm.channels" type="number" placeholder="Enter channels number" />-->
-<!--        </el-form-item>-->
-
-<!--        &lt;!&ndash; Needles &ndash;&gt;-->
-<!--        <el-form-item label="Needles Number">-->
-<!--          <el-input v-model.number="editForm.needles" type="number" placeholder="Enter needles number" />-->
-<!--        </el-form-item>-->
       </el-form>
       <!-- Dialog Footer -->
       <template #footer>
@@ -703,7 +700,6 @@ defineProps({
 const rawData = ref([]);
 const filteredData = computed(() => {
   const searchQueryValue = searchQuery.value;
-
   return rawData.value.filter((row) => {
     // 提前解构查询条件，避免每次都访问 `searchQuery.value`
     const {
@@ -856,6 +852,8 @@ const searchQuery = ref({
   needles: [],
 });
 
+let sortText = ref('Sort by PTRSB')
+
 // 分页状态
 const currentPage = ref(1); // 当前页码
 const pageSize = ref(10); // 每页显示的记录数
@@ -943,6 +941,41 @@ function resetSearch() {
     needles: [],
   };
   filteredData.value = rawData.value; // 重置为所有数据
+}
+
+function parseId(value) {
+  // 如果是 "--" 或者空值，可以视为一个特殊情况，统一排在最后
+  if (!value || value === "--") {
+    return Infinity;
+  }
+  const match = value.match(/([A-Za-z])?0*(\d+)/);
+  if (match) {
+    // match[2] 就是去掉前缀、去掉前导零后的数字部分
+    return parseInt(match[2], 10);
+  }
+  return value;
+}
+
+function sortData() {
+  if (sortText.value === "Sort by PTRSB") {
+    const keys = ['sampleId', 'tissueId', 'rollId', 'sliceId', 'blockId'];
+    rawData.value = [...rawData.value].sort((a, b) => {
+      for (let key of keys) {
+        const aVal = parseId(a[key]);
+        const bVal = parseId(b[key]);
+        if (aVal < bVal) return -1;
+        if (aVal > bVal) return 1;
+      }
+      return 0;
+    });
+    sortText.value = "Sort by Upload Time";
+  }
+  else {
+    console.log(rawData.value[0])
+    rawData.value = [...rawData.value].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    sortText.value = "Sort by PTRSB";
+  }
+
 }
 
 function beforeUpload(file) {
@@ -1461,6 +1494,61 @@ async function downloadInjection(row) {
   }
 }
 
+async function downloadInjectionRecords() {
+  try {
+    // 使用 Axios 请求文件
+    const response = await axios.get(`/api/download_injection_records`, {
+      responseType: "blob", // 确保返回二进制数据
+    });
+
+    // 从响应头获取文件名
+    const fileName = `injection_records.csv`;
+
+    // 创建 Blob 并触发下载
+    const blob = new Blob([response.data], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", fileName); // 设置文件名
+    document.body.appendChild(link);
+    link.click();
+
+    // 清理资源
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error("Failed to download file:", error);
+    this.$message.error("Failed to download file.");
+  }
+}
+
+async function downloadImagingRecords() {
+  try {
+    // 使用 Axios 请求文件
+    const response = await axios.get(`/api/download_imaging_records`, {
+      responseType: "blob", // 确保返回二进制数据
+    });
+
+    // 从响应头获取文件名
+    const fileName = `imaging_records.csv`;
+
+    // 创建 Blob 并触发下载
+    const blob = new Blob([response.data], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", fileName); // 设置文件名
+    document.body.appendChild(link);
+    link.click();
+
+    // 清理资源
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(link);
+  } catch (error) {
+    console.error("Failed to download file:", error);
+    this.$message.error("Failed to download file.");
+  }
+}
 function uploadBrightField(row) {
   currentSampleId.value = `${row.sampleId}-${row.tissueId}-${row.rollId}-${row.sliceId}`;
   // 判断 Block ID 是否为 '--'，如果不是，则添加到末尾
@@ -2338,13 +2426,11 @@ function uploadImagingMapFiles() {
   axios.post('/api/upload_imaging_map', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   })
-      .then(response => {
+      .then(() => {
         // Handle success
         ElMessage.success('File uploaded successfully');
-        const uploadedFiles = response.data.uploaded_files || [];
-        // Remove uploaded files from the file list
-        imagingMapFilesList.value = imagingMapFilesList.value.filter(file => !uploadedFiles.includes(file.name));
-        // updateImagingRecordStatus(imagingBlockForm.value.imaging_id, "matched");
+        imagingMapFilesList.value = []
+        uploadImagingMapVisible.value = false;
         fetchImagingMap()
       })
       .catch(error => {
