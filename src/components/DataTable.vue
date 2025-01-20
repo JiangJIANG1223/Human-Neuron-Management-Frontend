@@ -195,8 +195,10 @@
               <el-button type="primary" @click="triggerFileInput" style="margin-right: 10px;" disabled>Upload 3D Image</el-button>
               <input type="file" ref="fileInput" @change="handleFileChange" style="display: none;" />
           </div>
-	    <el-button type="primary" @click="select2DFolder" disabled>Upload 2D Image</el-button>
-            <input type="file" ref="fileInput2D" webkitdirectory multiple @change="handleFiles" style="display: none;" />
+          <div>
+              <el-button type="primary" @click="select2DFolder" disabled>Upload 2D Image</el-button>
+              <input type="file" ref="fileInput2D" webkitdirectory multiple @change="handleFiles" style="display: none;" />
+          </div>
         </div>
         <div class="right-buttons">
           <el-button @click="viewDialogVisible = false">取消</el-button>	  
