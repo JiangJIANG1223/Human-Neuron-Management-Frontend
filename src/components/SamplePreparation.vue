@@ -55,6 +55,8 @@
                     <el-option label="RJ" value="RJ"></el-option>
                     <el-option label="OMZ" value="OMZ"></el-option>
                     <el-option label="YW" value="YW"></el-option>
+                    <el-option label="YXM" value="YXM"></el-option>
+                    <el-option label="ZY" value="ZY"></el-option>
                     <el-option label="JYH" value="JYH"></el-option>
                     <el-option label="WYT" value="WYT"></el-option>
                   </el-select>
