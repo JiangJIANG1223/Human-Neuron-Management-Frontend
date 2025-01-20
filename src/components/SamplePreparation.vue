@@ -45,6 +45,22 @@
                 </el-form-item>
               </el-col>
               <el-col :span="6">
+                <el-form-item label="Perfusion Operator">
+                  <el-select
+                      v-model="searchQuery.operator"
+                      multiple
+                      clearable
+                      placeholder="Select the Operator"
+                  >
+                    <el-option label="RJ" value="RJ"></el-option>
+                    <el-option label="OMZ" value="OMZ"></el-option>
+                    <el-option label="YW" value="YW"></el-option>
+                    <el-option label="JYH" value="JYH"></el-option>
+                    <el-option label="WYT" value="WYT"></el-option>
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="6">
               <el-form-item label="Sample Comment">
                 <el-select
                     v-model="searchQuery.comment"
@@ -122,6 +138,7 @@
         <th>Block ID</th>
         <th>Injected</th>
         <th>Status</th>
+        <th>Operator</th>
         <th>Injection info</th>
         <th>Injection files</th>
         <th>Imaging info</th>
@@ -136,6 +153,7 @@
         <td>{{ row.blockId }}</td>
         <td>{{ row.injected_num }}</td>
         <td>{{ row.status }}</td>
+        <td>{{ row.perfusion_user }}</td>
         <td>
           <el-button type="primary" class="btn" @click="handleViewEdit(row)">View / Edit</el-button>
         </td>
@@ -709,6 +727,7 @@ const filteredData = computed(() => {
       sliceId,
       status,
       comment,
+      operator,
       dyes,
       needles
     } = searchQueryValue;
@@ -719,6 +738,7 @@ const filteredData = computed(() => {
     const hasRollId = !!rollId;
     const hasSliceId = !!sliceId;
     const hasStatus = Array.isArray(status) && status.length > 0;
+    const hasOperator = Array.isArray(operator) && operator.length > 0;
     const hasComment = comment !== undefined;
     const hasDyes = Array.isArray(dyes) && dyes.length > 0;
     const hasNeedles = Array.isArray(needles) && needles.length > 0;
@@ -742,7 +762,11 @@ const filteredData = computed(() => {
           Array.isArray(row.status) ? row.status : [row.status];
       if (!rowStatusArray.some((item) => status.includes(item))) return false;
     }
-
+    if (hasOperator) {
+      const rowOperatorArray =
+          Array.isArray(row.perfusion_user) ? row.perfusion_user : [row.perfusion_user];
+      if (!rowOperatorArray.some((item) => operator.includes(item))) return false;
+    }
     // 处理 comment 的匹配
     if (hasComment) {
       const isCommentNonEmpty =
@@ -848,6 +872,7 @@ const searchQuery = ref({
   sliceId: '',
   status: '',
   comment: '',
+  operator:'',
   dyes: [], // 默认检索 1, 2, 3, 4
   needles: [],
 });
