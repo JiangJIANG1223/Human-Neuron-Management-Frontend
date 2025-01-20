@@ -192,10 +192,10 @@
         <div class="left-buttons">
           <el-button v-if="isEdit" type="danger" @click="confirmDelete">删除</el-button>
           <div>
-              <el-button type="primary" @click="triggerFileInput" style="margin-right: 10px;">Upload 3D Image</el-button>
+              <el-button type="primary" @click="triggerFileInput" style="margin-right: 10px;" disabled>Upload 3D Image</el-button>
               <input type="file" ref="fileInput" @change="handleFileChange" style="display: none;" />
           </div>
-	    <el-button type="primary" @click="select2DFolder">Upload 2D Image</el-button>
+	    <el-button type="primary" @click="select2DFolder" disabled>Upload 2D Image</el-button>
             <input type="file" ref="fileInput2D" webkitdirectory multiple @change="handleFiles" style="display: none;" />
         </div>
         <div class="right-buttons">
