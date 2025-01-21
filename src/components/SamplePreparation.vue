@@ -446,7 +446,7 @@
             class="upload-demo"
             drag
             :multiple="true"
-            :file-list="metadataFilesList"
+            :file-list="markerFilesList"
             :before-upload="validateMarkerFile"
             :on-change="handleMarkerFilesChange"
             :on-remove="handleMarkerFilesRemove"
@@ -2069,40 +2069,130 @@ async function uploadImagingMatchTableFiles() {
     }
   }
 }
+// async function uploadImagingAnnotationFiles() {
+//   try {
+//     // 检查文件名是否符合规则
+//     const file = markerFilesList.value[0];
+//     let fileNamePattern = ''
+//     if(imagingBlockForm.value.imaging_id === '--'){
+//       fileNamePattern = new RegExp(
+//           `^${currentSampleId.value}(-[A-Za-z_]{2,10})?\\.apo$`
+//       );
+//     }else {
+//       fileNamePattern = new RegExp(
+//           `^${currentSampleId.value}-${imagingBlockForm.value.imaging_id}(-[A-Za-z_]{2,10})?\\.apo$`
+//       );
+//     }
+//
+//     if (!fileNamePattern.test(file.name)) {
+//       ElMessage.error(
+//           `Invalid filename format. Expected format: ${currentSampleId.value}-${imagingBlockForm.value.imaging_id}(-NAME).apo`
+//       );
+//       return;
+//     }
+//
+//     // 检查文件是否已经存在
+//     const checkResponse = await axios.get(
+//         `/api/check_imaging_record_file_exists/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
+//         {
+//           params: { filename: file.name },
+//         }
+//     );
+//
+//     if (checkResponse.status === 200 && checkResponse.data.exists) {
+//       // 提示用户是否覆盖
+//       const confirmOverwrite = await ElMessageBox.confirm(
+//           `A file with the name '${file.name}' already exists. Do you want to overwrite it?`,
+//           'File Exists',
+//           {
+//             confirmButtonText: 'Yes, Overwrite',
+//             cancelButtonText: 'No, Cancel',
+//             type: 'warning',
+//           }
+//       );
+//
+//       if (confirmOverwrite !== 'confirm') {
+//         // 用户选择不覆盖，直接返回
+//         ElMessage.info('File upload cancelled.');
+//         return;
+//       }
+//     }
+//
+//     // 上传文件
+//     const formData = new FormData();
+//     formData.append('annotation_file', file.raw);
+//
+//     const response = await axios.post(
+//         `/api/upload_imaging_annotation_file/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
+//         formData,
+//         {
+//           headers: { 'Content-Type': 'multipart/form-data' },
+//         }
+//     );
+//
+//     if (response && response.status === 200) {
+//       ElMessage.success('File uploaded successfully');
+//       const uploadedFiles = response.data.uploaded_files || [];
+//       // 移除已上传文件
+//       markerFilesList.value = markerFilesList.value.filter(
+//           (file) => !uploadedFiles.includes(file.name)
+//       );
+//
+//       // 更新记录状态为 "matched"
+//       await updateImagingRecordStatus(imagingBlockForm.value.imaging_id, 'marked');
+//       await checkAndUpdateSampleStatus(currentSampleIndex.value)
+//     } else {
+//       ElMessage.error('Failed to upload file.');
+//     }
+//   } catch (error) {
+//     console.error('Error uploading imaging annotation file:', error);
+//     if (error.response && error.response.data.detail) {
+//       ElMessage.error(error.response.data.detail);
+//     } else if (error.message) {
+//       ElMessage.error(error.message);
+//     } else {
+//       ElMessage.error('Failed to upload file. Please try again.');
+//     }
+//   }
+// }
 async function uploadImagingAnnotationFiles() {
   try {
-    // 检查文件名是否符合规则
+    // 检查文件列表是否为空
     const file = markerFilesList.value[0];
-    let fileNamePattern = ''
-    if(imagingBlockForm.value.imaging_id === '--'){
+    if (!file) {
+      ElMessage.error('No file selected for upload.');
+      return;
+    }
+
+    // 检查文件名是否符合规则
+    let fileNamePattern = '';
+    if (imagingBlockForm.value.imaging_id === '--') {
       fileNamePattern = new RegExp(
-          `^${currentSampleId.value}(-[A-Za-z_]{2,10})?\\.apo$`
+          `^${currentSampleId.value}(-[A-Za-z_]{2,10})?\\.(apo|marker)$`
       );
-    }else {
+    } else {
       fileNamePattern = new RegExp(
-          `^${currentSampleId.value}-${imagingBlockForm.value.imaging_id}(-[A-Za-z_]{2,10})?\\.apo$`
+          `^${currentSampleId.value}-${imagingBlockForm.value.imaging_id}(-[A-Za-z_]{2,10})?\\.(apo|marker)$`
       );
     }
 
-
-
     if (!fileNamePattern.test(file.name)) {
       ElMessage.error(
-          `Invalid filename format. Expected format: ${currentSampleId.value}-${imagingBlockForm.value.imaging_id}(-NAME).apo`
+          `Invalid filename format. Expected format: ${currentSampleId.value}-${imagingBlockForm.value.imaging_id}(-NAME).apo or .marker`
       );
       return;
     }
 
-    // 检查文件是否已经存在
+    // 判断文件后缀名
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+
+    // === 检查文件是否已经存在 ===
     const checkResponse = await axios.get(
         `/api/check_imaging_record_file_exists/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
-        {
-          params: { filename: file.name },
-        }
+        { params: { filename: file.name } }
     );
 
     if (checkResponse.status === 200 && checkResponse.data.exists) {
-      // 提示用户是否覆盖
       const confirmOverwrite = await ElMessageBox.confirm(
           `A file with the name '${file.name}' already exists. Do you want to overwrite it?`,
           'File Exists',
@@ -2114,37 +2204,57 @@ async function uploadImagingAnnotationFiles() {
       );
 
       if (confirmOverwrite !== 'confirm') {
-        // 用户选择不覆盖，直接返回
         ElMessage.info('File upload cancelled.');
         return;
       }
     }
 
-    // 上传文件
-    const formData = new FormData();
-    formData.append('annotation_file', file.raw);
+    if (fileExtension === 'apo') {
+      // === 第一段逻辑：处理 .apo 文件 ===
+      const formData = new FormData();
+      formData.append('annotation_file', file.raw);
 
-    const response = await axios.post(
-        `/api/upload_imaging_annotation_file/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
-        formData,
-        {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        }
-    );
-
-    if (response && response.status === 200) {
-      ElMessage.success('File uploaded successfully');
-      const uploadedFiles = response.data.uploaded_files || [];
-      // 移除已上传文件
-      markerFilesList.value = markerFilesList.value.filter(
-          (file) => !uploadedFiles.includes(file.name)
+      const response = await axios.post(
+          `/api/upload_imaging_annotation_file/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`,
+          formData,
+          { headers: { 'Content-Type': 'multipart/form-data' } }
       );
 
-      // 更新记录状态为 "matched"
-      await updateImagingRecordStatus(imagingBlockForm.value.imaging_id, 'marked');
-      await checkAndUpdateSampleStatus(currentSampleIndex.value)
+      if (response && response.status === 200) {
+        ElMessage.success('File uploaded successfully');
+        // const uploadedFiles = response.data.uploaded_files || [];
+        // markerFilesList.value = markerFilesList.value.filter(
+        //     (file) => !uploadedFiles.includes(file.name)
+        // );
+        markerFilesList.value = []
+        // 更新记录状态为 "marked"
+        await updateImagingRecordStatus(imagingBlockForm.value.imaging_id, 'marked');
+        await checkAndUpdateSampleStatus(currentSampleIndex.value);
+
+        imagingMarkerDialogVisible.value = false
+      } else {
+        ElMessage.error('Failed to upload file.');
+      }
+    } else if (fileExtension === 'marker') {
+      // === 第二段逻辑：处理 .marker 文件 ===
+      const formData = new FormData();
+      formData.append('marker_file', file.raw);
+
+      const response = await axios.post(`/api/upload_imaging_marker/${currentSampleId.value}/${imagingBlockForm.value.imaging_id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (response && response.status === 200) {
+        ElMessage.success('File uploaded successfully');
+        markerFilesList.value = []
+        // 更新记录状态为 "marked"
+        await updateImagingRecordStatus(imagingBlockForm.value.imaging_id, 'marked');
+        imagingMarkerDialogVisible.value = false
+      } else {
+        ElMessage.error('Failed to upload file.');
+      }
     } else {
-      ElMessage.error('Failed to upload file.');
+      ElMessage.error('Unsupported file type. Only .apo and .marker files are allowed.');
     }
   } catch (error) {
     console.error('Error uploading imaging annotation file:', error);
@@ -2157,7 +2267,6 @@ async function uploadImagingAnnotationFiles() {
     }
   }
 }
-
 // 新建 Imaging Record
 async function newImagingRecord() {
   if (imagingFileList.value.length === 0) {
