@@ -115,13 +115,13 @@
     </el-card>
     <div style="display: flex; justify-content: space-between;">
       <div>
-        <el-tooltip content="新建灌注记录">
+        <el-tooltip content="Create a new injection record">
           <el-button type="primary" class="btn" @click="handleNew" :disabled="isGuest">New</el-button>
         </el-tooltip>
-        <el-tooltip content="下载灌注表">
+        <el-tooltip content="Download all injection status">
           <el-button type="primary" class="btn" @click="downloadInjectionRecords" :disabled="isGuest">Download Injection</el-button>
         </el-tooltip>
-        <el-tooltip content="下载成像表">
+        <el-tooltip content="Download all imaging status">
           <el-button type="primary" class="btn" @click="downloadImagingRecords" :disabled="isGuest">Download Imaging</el-button>
         </el-tooltip>
       </div>
@@ -313,7 +313,7 @@
       <div class="dialog-content">
         <div class="new-injection-section">
           <el-tooltip content="create a new Imaging Record">
-            <el-button type="primary" class="btn" @click="handleNewImagingRecord" :disabled="isGuest">New</el-button>
+            <el-button type="primary" class="btn" @click="handleNewImagingRecord" :disabled="isGuest || (editForm.status ==='inserted' || editForm.status === 'matched')">New</el-button>
           </el-tooltip>
           <el-tooltip content="upload and show Imaging map">
             <el-button type="primary" class="btn" @click="uploadImagingMap">Imaging map</el-button>
@@ -601,7 +601,7 @@
         width="80%"
     >
       <template #title>
-        Imaging MIP of {{ currentSampleId }}
+        Imaging MIP of {{ currentSampleId }}<span v-if="imagingBlockForm.imaging_id !== '--'">-{{ imagingBlockForm.imaging_id }}</span>
       </template>
       <div v-if="imagingMIPUrl" style="display: flex;justify-content: center;align-items: center;">
         <!-- 显示已上传图片 -->
@@ -1463,94 +1463,6 @@ async function saveUploadedData() {
     }
   } // end for loop
 }
-// async function saveUploadedData() {
-//   console.log(editForm.value);
-//   currentSampleId.value = `${editForm.value.sampleId}-${editForm.value.tissueId}-${editForm.value.rollId}-${editForm.value.sliceId}`;
-//   // 判断 Block ID 是否为 '--'，如果不是，则添加到末尾
-//   if (editForm.value.blockId && editForm.value.blockId !== '--') {
-//     currentSampleId.value += `-${editForm.value.blockId}`;
-//   }
-//   // Step 1: Validate Required Fields
-//   const { sampleId, tissueId, rollId, sliceId, blockId, status } = editForm.value;
-//   if (!sampleId || !tissueId || !rollId || !sliceId) {
-//     ElMessage.error('SampleID, TissueID, RollID, and SliceID are required.');
-//     return;
-//   }
-//
-//   // Step 2: Upload the Injection File First
-//   let uploadParams;
-//   try {
-//     const uploadResult = await uploadInjectionFile();
-//     console.log('uploadResult',uploadResult);
-//     // Assuming uploadInjectionFile returns an object with 'success' and 'data' properties
-//     if (uploadResult.status === 200) {
-//       ElMessage.success('Injection file uploaded successfully.');
-//       uploadParams = uploadResult.data; // Parameters returned from backend after file processing
-//     } else {
-//       ElMessage.error(uploadResult.message || 'Injection file upload failed.');
-//       return; // Halt the process if upload failed
-//     }
-//   } catch (error) {
-//     // Handle errors from uploadInjectionFile
-//     if (error.response && error.response.data && error.response.data.detail) {
-//       ElMessage.error(error.response.data.detail);
-//     } else if (error.message) {
-//       ElMessage.error(`Upload Error: ${error.message}`);
-//     } else {
-//       ElMessage.error('An unexpected error occurred during file upload.');
-//     }
-//     return; // Halt the process on error
-//   }
-//
-//   // Step 3: Prepare Sample Record Data
-//   const newSample = {
-//     sampleId,
-//     tissueId,
-//     rollId,
-//     sliceId,
-//     blockId,
-//     status,
-//     ...uploadParams, // Include parameters from the file upload
-//     imaging_records: [] // Initialize imaging_records as empty
-//   };
-//
-//   // Construct the currentSampleId
-//   currentSampleId.value = `${sampleId}-${tissueId}-${rollId}-${sliceId}`;
-//   if (blockId && blockId !== '--') {
-//     currentSampleId.value += `-${blockId}`;
-//   }
-//
-//   // Step 4: Create the Sample Record
-//   try {
-//     const response = await axios.post('/api/sample_preparation', newSample);
-//
-//     // Check response status
-//     if (response && response.status === 200) {
-//       // Successfully created the sample
-//       rawData.value.push(response.data);
-//       ElMessage.success('New sample added successfully.');
-//     } else if (response && response.status === 400) {
-//       // Handle Bad Request errors
-//       if (response.data && response.data.detail) {
-//         ElMessage.error(response.data.detail);
-//       } else {
-//         ElMessage.error('Bad Request: Invalid data.');
-//       }
-//     } else {
-//       // Handle unexpected status codes
-//       ElMessage.error(`Unexpected status code: ${response.status}`);
-//     }
-//   } catch (error) {
-//     // Handle network errors or other issues during sample creation
-//     if (error.response && error.response.data && error.response.data.detail) {
-//       ElMessage.error(error.response.data.detail);
-//     } else if (error.message) {
-//       ElMessage.error(`Error: ${error.message}`);
-//     } else {
-//       ElMessage.error('An unexpected error occurred while creating the sample.');
-//     }
-//   }
-// }
 
 // 取消上传
 function cancelUpload() {
@@ -1839,13 +1751,13 @@ async function checkAndUpdateSampleStatus(sampleId) {
 
 // 打开 imaging dialog
 function openImagingDialog(row) {
+  editForm.value = { ...row }
   currentSampleId.value = `${row.sampleId}-${row.tissueId}-${row.rollId}-${row.sliceId}`;
-  // 判断 Block ID 是否为 '--'，如果不是，则添加到末尾
+
   if (row.blockId && row.blockId !== '--') {
     currentSampleId.value += `-${row.blockId}`;
   }
   showImagingDialog.value = true;
-  // 拼接 currentSampleId 的基础部分
   currentSampleId.value = `${row.sampleId}-${row.tissueId}-${row.rollId}-${row.sliceId}`;
 
   // 判断 Block ID 是否为 '--'，如果不是，则添加到末尾
@@ -2448,6 +2360,7 @@ function viewEditBlock(img) {
 
 // MIP, imaging data, metadata, somas, injection matched table 等功能
 function imageMIP(img) {
+  imagingBlockForm.value = { ...img };
   showImagingMIP.value = true;
   fetchImagingMIP(img.imaging_id);
   console.log('Image MIP:', img.imaging_id);
