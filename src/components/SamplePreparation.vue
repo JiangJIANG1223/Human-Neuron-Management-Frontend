@@ -453,7 +453,7 @@
             :auto-upload="false"
         >
           <i class="el-icon-upload"></i>
-          <div class="el-upload__text">Drag .apo file here or click to upload</div>
+          <div class="el-upload__text">Drag .apo/.marker file here or click to upload</div>
         </el-upload>
       </el-form>
       <!-- Upload Button -->
