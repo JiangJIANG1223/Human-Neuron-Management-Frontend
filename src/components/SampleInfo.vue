@@ -185,7 +185,8 @@ export default {
         send_sample_date: '',
         treatment_naive: '',
         treatment_received: '',
-        pathological_diagnosis: ''
+        pathological_diagnosis: '',
+        tissue_type: ''
       },
       viewForm: {
         idx: null,
@@ -215,7 +216,8 @@ export default {
         send_sample_date: '',
         treatment_naive: '',
         treatment_received: '',
-        pathological_diagnosis: ''
+        pathological_diagnosis: '',
+        tissue_type: ''
       },
       isDefaultValue: {},
       formSections: [
@@ -248,7 +250,8 @@ export default {
             { label: '寄出/取样日期', prop: 'send_sample_date' },
             { label: 'Treatment Naive', prop: 'treatment_naive' },
             { label: '接受过何种治疗', prop: 'treatment_received' },
-            { label: '病理诊断', prop: 'pathological_diagnosis' }
+            { label: '病理诊断', prop: 'pathological_diagnosis' },
+            { label: 'Tissue Type', prop: 'tissue_type' }
           ]
         }
       ]
@@ -259,7 +262,7 @@ export default {
   },
   watch: {
     searchQuery: {
-      handler(newVal) {
+      handler() {
         // 当 searchQuery 改变时，重新请求数据
         this.fetchSampleInfo();
       },
@@ -357,7 +360,7 @@ export default {
       this.samplefile_uploadLoading = true;
       const sample_idx = this.viewForm.idx;
       const files = event.target.files;
-      const formData = new FormData();
+      new FormData();
       const folderName = files[0].webkitRelativePath.split('/')[0];
       alert(`${folderName}`);
 
@@ -432,6 +435,7 @@ export default {
       .then((response) => {
         this.sampleInfo = response.data.data;
         this.total = response.data.total;
+        console.log('sampleInfo',this.sampleInfo);
       })
       .catch((error) => {
         console.error(error);
@@ -563,7 +567,7 @@ export default {
         headers: {
           'Content-Type': 'application/json'
         }
-      }).then(response => {
+      }).then(() => {
         this.fetchSampleInfo();
         this.viewDialogVisible = false;
         this.$message.success('数据更新成功');
@@ -588,7 +592,7 @@ export default {
         headers: {
           'Content-Type': 'application/json'
         }
-      }).then(response => {
+      }).then(() => {
         this.fetchSampleInfo();
         this.viewDialogVisible = false;
         this.$message.success('数据删除成功');
