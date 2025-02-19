@@ -450,10 +450,7 @@ export default {
     //   }
     // },
     handleSelectionChange(val) {
-      if (this.selectAllPages) {
-        // 如果全选状态下，selectedSamples应包含所有样本数据
-        this.selectedSamples = val;
-      } else {
+      if (!this.selectAllPages) {
         // 如果不是全选状态下，只更新当前页选中的数据
         const selectedIdxs = val.map(item => item.idx);
         this.selectedSamples = this.selectedSamples.filter(item => !selectedIdxs.includes(item.idx)).concat(val);
@@ -498,6 +495,7 @@ export default {
     },
 
     fetchAllSampleInfo() {
+       console.log('sample_source',this.searchQuery.sample_source);
       const params = {
         skip: 0,
         limit: this.total,
@@ -505,12 +503,24 @@ export default {
         sample_source: this.searchQuery.sample_source,
         PID: this.searchQuery.patient_ID
       };
+      console.log('Sending params:', params);
       return axios.get('/api/sample_information/', {
         headers: {
           'Content-Type': 'application/json'
         },
-        params: params
+        params: params,
+        paramsSerializer: (params) => {
+          // 序列化为 FastAPI 支持的格式
+          return Object.entries(params)
+              .flatMap(([key, value]) =>
+                  Array.isArray(value)
+                      ? value.map((v) => `${encodeURIComponent(key)}=${encodeURIComponent(v)}`)
+                      : `${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+              )
+              .join('&');
+        },
       }).then(response => {
+        console.log('fetch all data',response.data.data);
         return response.data.data;
       });
     },
