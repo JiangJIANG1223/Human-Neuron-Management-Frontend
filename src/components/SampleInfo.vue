@@ -442,19 +442,23 @@ export default {
         this.$message.error('Failed to load sample information');
       });
     },
-        // handleSelectionChange(val) {
+    // handleSelectionChange(val) {
     //   if (!this.selectAllPages) {
-    //     this.selectedSamples = val;
+    //     // 合并当前页选中的数据到 selectedSamples 中
+    //     const selectedIdxs = val.map(item => item.idx);
+    //     this.selectedSamples = this.selectedSamples.filter(item => !selectedIdxs.includes(item.idx)).concat(val);
     //   }
     // },
     handleSelectionChange(val) {
-      if (!this.selectAllPages) {
-        // 合并当前页选中的数据到 selectedSamples 中
+      if (this.selectAllPages) {
+        // 如果全选状态下，selectedSamples应包含所有样本数据
+        this.selectedSamples = val;
+      } else {
+        // 如果不是全选状态下，只更新当前页选中的数据
         const selectedIdxs = val.map(item => item.idx);
         this.selectedSamples = this.selectedSamples.filter(item => !selectedIdxs.includes(item.idx)).concat(val);
       }
     },
-
     handlePageChange(page) {
       this.currentPage = page;
       this.fetchSampleInfo();
