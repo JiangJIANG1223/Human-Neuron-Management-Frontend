@@ -174,6 +174,8 @@ export default {
         sample_size: '',
         tumor_location: '',
         intracranial_location: '',
+        pathological_diagnosis: '',
+        tissue_type: '',
         english_abbr_nj: '',
         english_full_name: '',
         left_right_brain: '',
@@ -185,8 +187,6 @@ export default {
         send_sample_date: '',
         treatment_naive: '',
         treatment_received: '',
-        pathological_diagnosis: '',
-        tissue_type: ''
       },
       viewForm: {
         idx: null,
@@ -205,6 +205,8 @@ export default {
         sample_size: '',
         tumor_location: '',
         intracranial_location: '',
+        tissue_type: '',
+        pathological_diagnosis: '',
         english_abbr_nj: '',
         english_full_name: '',
         left_right_brain: '',
@@ -216,8 +218,6 @@ export default {
         send_sample_date: '',
         treatment_naive: '',
         treatment_received: '',
-        pathological_diagnosis: '',
-        tissue_type: ''
       },
       isDefaultValue: {},
       formSections: [
@@ -239,6 +239,8 @@ export default {
             { label: '样本大小', prop: 'sample_size' },
             { label: '肿瘤部位', prop: 'tumor_location' },
             { label: '颅内取材部位', prop: 'intracranial_location' },
+            { label: 'Tissue Type', prop: 'tissue_type' },
+            { label: '病理诊断', prop: 'pathological_diagnosis' },
             { label: '英文简称(南京编)', prop: 'english_abbr_nj' },
             { label: '英文全称', prop: 'english_full_name' },
             { label: '左/右脑', prop: 'left_right_brain' },
@@ -250,8 +252,6 @@ export default {
             { label: '寄出/取样日期', prop: 'send_sample_date' },
             { label: 'Treatment Naive', prop: 'treatment_naive' },
             { label: '接受过何种治疗', prop: 'treatment_received' },
-            { label: '病理诊断', prop: 'pathological_diagnosis' },
-            { label: 'Tissue Type', prop: 'tissue_type' }
           ]
         }
       ]
