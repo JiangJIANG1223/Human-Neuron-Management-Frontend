@@ -315,9 +315,10 @@ export default {
         }, {
           responseType: 'blob' // 获取 Blob 用于下载文件
         });
-
+        console.log('response',response.data)
         // 创建下载链接
         const url = window.URL.createObjectURL(new Blob([response.data]));
+        console.log('url',url)
         const link = document.createElement('a');
         link.href = url;
         link.setAttribute('download', `${row.idx}_${row.sample_id}.zip`); // 设置下载文件名
