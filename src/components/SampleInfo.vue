@@ -10,7 +10,7 @@
     </div>
     <el-table ref="sampleInfo" :data="sampleInfo" @selection-change="handleSelectionChange">
       <el-table-column type="selection" width="55"></el-table-column>
-      <!-- <el-table-column prop="idx" label="Index" width="120"></el-table-column> -->
+      <el-table-column prop="idx" label="DB_ID" width="120"></el-table-column>
       <el-table-column prop="total_id" label="总表编号"></el-table-column>
       <el-table-column prop="patient_id" label="患者编号"></el-table-column>
       <el-table-column prop="sample_id" label="样本编号"></el-table-column>
