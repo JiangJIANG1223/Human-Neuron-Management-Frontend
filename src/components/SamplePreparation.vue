@@ -363,7 +363,9 @@
               <el-button type="primary" class="btn" @click="downloadImagingFiles(img)" :disabled="isGuest">Download</el-button>
             </td>
             <td>
-              <el-button type="primary" class="btn" @click="toCell(img)" :disabled="!(img.status === 'imaged' && img.marked)">To cell</el-button>
+              <el-button type="primary" class="btn" @click="preview(img)">Preview</el-button>
+              <el-button type="primary" class="btn" @click="toCell(img)">Submit</el-button>
+              <!--              <el-button type="primary" class="btn" @click="toCell(img)" :disabled="!(img.status === 'marked'|| img.status === 'inserted')">Submit</el-button>-->
             </td>
           </tr>
           </tbody>
@@ -701,7 +703,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { ElMessage, ElMessageBox} from 'element-plus';
+import {ElLoading, ElMessage, ElMessageBox} from 'element-plus';
 import axios from '@/axios';
 
 // 配置 Axios 实例
@@ -1752,6 +1754,7 @@ async function checkAndUpdateSampleStatus(sampleId) {
 // 打开 imaging dialog
 function openImagingDialog(row) {
   editForm.value = { ...row }
+  console.log('edit form', editForm.value)
   currentSampleId.value = `${row.sampleId}-${row.tissueId}-${row.rollId}-${row.sliceId}`;
 
   if (row.blockId && row.blockId !== '--') {
@@ -1765,11 +1768,11 @@ function openImagingDialog(row) {
     currentSampleId.value += `-${row.blockId}`;
   }
   fetchImagingMap()
-  console.log('Generated currentSampleId:', currentSampleId.value); // 打印调试信息
+  // console.log('Generated currentSampleId:', currentSampleId.value); // 打印调试信息
   currentSampleIndex.value = row.id
-  console.log('currentSampleIndex',currentSampleIndex.value)
+  // console.log('currentSampleIndex',currentSampleIndex.value)
   imagingRecords.value = row.imaging_records ? [...row.imaging_records] : [];
-  console.log('imagingRecords:', imagingRecords);
+  // console.log('imagingRecords:', imagingRecords);
 }
 
 function parseImagingFileName(file) {
@@ -2801,13 +2804,129 @@ async function uploadBrightFieldDataFiles() {
     ElMessage.error('Failed to upload bright field data files.');
   }
 }
+async function preview(img) {
+  try {
+    // Determine is_multicolor based on dyes value
+    const is_multicolor = editForm.value.dyes > 1;
 
-function toCell(img) {
-  if (img.status === 'imaged' && img.marked) {
-    console.log('To cell action:', img);
-    // 执行相关操作
-  } else {
-    ElMessage.warning('Imaged and Marked must both be true to perform this action.');
+    // Prepare form data for API call
+    const formData = new FormData();
+    formData.append('is_multicolor', is_multicolor);
+    formData.append('sample_preparation_id', currentSampleId.value);
+    formData.append('imaging_id', img.imaging_id);
+
+    // Make the API call with responseType blob to handle file download
+    const response = await axios.post('/api/preview_insert_sql/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      responseType: 'blob'  // Important for file downloads
+    });
+
+    // Create a download link for the file
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    const filename = `${currentSampleId.value}_${img.imaging_id}_cell_table.csv`;
+
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    ElMessage.success('Cell table downloaded successfully');
+
+  } catch (error) {
+    console.error('Error generating preview:', error);
+
+    // Error handling
+    if (error.response) {
+      // The error response for blobs needs special handling
+      if (error.response.data instanceof Blob) {
+        const reader = new FileReader();
+        reader.onload = function() {
+          try {
+            const errorData = JSON.parse(reader.result);
+            ElMessage.error(errorData.detail || 'Failed to generate cell table');
+          } catch (e) {
+            ElMessage.error('Unknown server error');
+          }
+        };
+        reader.readAsText(error.response.data);
+      } else {
+        ElMessage.error(error.response.data?.detail || 'Failed to generate cell table');
+      }
+    } else {
+      ElMessage.error('Error connecting to server');
+    }
+  }
+}
+
+async function toCell(img) {
+  try {
+    // First confirm with the user
+    await ElMessageBox.confirm(
+        'Are you sure you want to submit this cell table to the database?',
+        'Confirmation',
+        {
+          confirmButtonText: 'Submit',
+          cancelButtonText: 'Cancel',
+          type: 'warning'
+        }
+    );
+
+    // If user confirms, proceed with the API call
+    const formData = new FormData();
+    formData.append('sample_preparation_id', currentSampleId.value);
+    formData.append('imaging_id', img.imaging_id);
+
+    // Show loading message
+    const loadingInstance = ElLoading.service({
+      lock: true,
+      text: 'Importing cell table to database...',
+      background: 'rgba(0, 0, 0, 0.7)'
+    });
+
+    // Make the API call
+    const response = await axios.post('/api/import-cell-table/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+
+    // Close the loading message
+    loadingInstance.close();
+
+    if (response.data.status === 'success') {
+      ElMessage.success(`${response.data.inserted_rows} cells were successfully imported to the database`);
+
+      // Update the imaging record status to 'inserted'
+      await updateImagingRecordStatus(img.imaging_id, 'inserted');
+
+      // Update the sample status
+      await checkAndUpdateSampleStatus(currentSampleIndex.value);
+    } else {
+      ElMessage.warning('Import completed with warnings');
+    }
+
+  } catch (error) {
+    console.error('Error importing cell table:', error);
+
+    if (error === 'cancel') {
+      // User canceled the operation
+      return;
+    }
+
+    // Handle different error scenarios
+    if (error.response) {
+      if (error.response.status === 404) {
+        ElMessage.error('Cell table file not found. Please generate it first using Preview.');
+      } else if (error.response.status === 500) {
+        ElMessage.error(`Database import failed: ${error.response.data.detail || 'Unknown error'}`);
+      } else {
+        ElMessage.error(error.response.data.detail || 'Failed to import cell table');
+      }
+    } else if (error.request) {
+      ElMessage.error('Network error. Please check your connection and try again.');
+    } else {
+      ElMessage.error('Error preparing import request');
+    }
   }
 }
 </script>
