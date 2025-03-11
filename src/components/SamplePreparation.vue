@@ -2873,8 +2873,11 @@ async function toCell(img) {
         }
     );
 
-    // If user confirms, proceed with the API call
+    const is_multicolor = editForm.value.dyes > 1;
+
+    // Prepare form data for API call
     const formData = new FormData();
+    formData.append('is_multicolor', is_multicolor);
     formData.append('sample_preparation_id', currentSampleId.value);
     formData.append('imaging_id', img.imaging_id);
 
