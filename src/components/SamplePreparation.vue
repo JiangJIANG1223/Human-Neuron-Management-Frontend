@@ -363,7 +363,7 @@
               <el-button type="primary" class="btn" @click="downloadImagingFiles(img)" :disabled="isGuest">Download</el-button>
             </td>
             <td>
-              <el-button type="primary" class="btn" @click="preview(img)" :disabled="!(img.status === 'marked')">Preview</el-button>
+              <el-button type="primary" class="btn" @click="preview(img)">Preview</el-button>
               <el-button type="primary" class="btn" @click="toCell(img)" :disabled="!(img.status === 'marked')">Submit</el-button>
               <!--              <el-button type="primary" class="btn" @click="toCell(img)" :disabled="!(img.status === 'marked'|| img.status === 'inserted')">Submit</el-button>-->
             </td>
