@@ -2824,7 +2824,12 @@ async function preview(img) {
     // Create a download link for the file
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
-    const filename = `${currentSampleId.value}_${img.imaging_id}_cell_table.csv`;
+    let filename = ''
+    if (img.imaging_id === '--') {
+      filename = `${currentSampleId.value}_cell_table.csv`;
+    } else {
+      filename = `${currentSampleId.value}_${img.imaging_id}_cell_table.csv`;
+    }
 
     link.href = url;
     link.setAttribute('download', filename);
