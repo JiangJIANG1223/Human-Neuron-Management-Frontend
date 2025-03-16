@@ -357,8 +357,8 @@
             </td>
             <td>
               <el-button type="primary" class="btn" @click="uploadImagingData(img)" disabled>Imaging data</el-button>
-              <el-button type="primary" class="btn" @click="uploadImagingMetadata(img)" :disabled="isGuest">Metadata</el-button>
-              <el-button type="primary" class="btn" @click="uploadImagingMarker(img)" :disabled="isGuest">Soma</el-button>
+              <el-button type="primary" class="btn" @click="uploadImagingMetadata(img)" :disabled="isGuest || (img.status ==='inserted')">Metadata</el-button>
+              <el-button type="primary" class="btn" @click="uploadImagingMarker(img)" :disabled="isGuest || (img.status ==='inserted')">Soma</el-button>
               <el-button type="primary" class="btn" @click="uploadImagingMatchTable(img)" :disabled="isGuest">Injection matched table</el-button>
               <el-button type="primary" class="btn" @click="downloadImagingFiles(img)" :disabled="isGuest">Download</el-button>
             </td>
