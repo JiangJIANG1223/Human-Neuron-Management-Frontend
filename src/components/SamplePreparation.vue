@@ -2892,49 +2892,48 @@ async function toCell(img) {
       text: 'Importing cell table to database...',
       background: 'rgba(0, 0, 0, 0.7)'
     });
+    try {
+      const response = await axios.post('/api/import-cell-table/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
 
-    // Make the API call
-    const response = await axios.post('/api/import-cell-table/', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
+      if (response.data.status === 'success') {
+        ElMessage.success(`${response.data.inserted_rows} cells were successfully imported to the database`);
 
-    // Close the loading message
-    loadingInstance.close();
+        // Update the imaging record status to 'inserted'
+        await updateImagingRecordStatus(img.imaging_id, 'inserted');
 
-    if (response.data.status === 'success') {
-      ElMessage.success(`${response.data.inserted_rows} cells were successfully imported to the database`);
-
-      // Update the imaging record status to 'inserted'
-      await updateImagingRecordStatus(img.imaging_id, 'inserted');
-
-      // Update the sample status
-      await checkAndUpdateSampleStatus(currentSampleIndex.value);
-    } else {
-      ElMessage.warning('Import completed with warnings');
+        // Update the sample status
+        await checkAndUpdateSampleStatus(currentSampleIndex.value);
+      } else {
+        ElMessage.warning('Import completed with warnings');
+      }
+    } catch (error) {
+      // Handle different error scenarios
+      if (error.response) {
+        if (error.response.status === 404) {
+          ElMessage.error('Cell table file not found. Please generate it first using Preview.');
+        } else if (error.response.status === 500) {
+          ElMessage.error(`Database import failed: ${error.response.data.detail || 'Unknown error'}`);
+        } else {
+          ElMessage.error(error.response.data.detail || 'Failed to import cell table');
+        }
+      } else if (error.request) {
+        ElMessage.error('Network error. Please check your connection and try again.');
+      } else {
+        ElMessage.error('Error preparing import request');
+      }
+    }finally {
+      loadingInstance.close();
     }
-
   } catch (error) {
     console.error('Error importing cell table:', error);
-
     if (error === 'cancel') {
-      // User canceled the operation
+      console.error('Error in confirmation dialog:', error);
+      ElMessage.error('Operation canceled');
       return;
     }
 
-    // Handle different error scenarios
-    if (error.response) {
-      if (error.response.status === 404) {
-        ElMessage.error('Cell table file not found. Please generate it first using Preview.');
-      } else if (error.response.status === 500) {
-        ElMessage.error(`Database import failed: ${error.response.data.detail || 'Unknown error'}`);
-      } else {
-        ElMessage.error(error.response.data.detail || 'Failed to import cell table');
-      }
-    } else if (error.request) {
-      ElMessage.error('Network error. Please check your connection and try again.');
-    } else {
-      ElMessage.error('Error preparing import request');
-    }
   }
 }
 </script>
