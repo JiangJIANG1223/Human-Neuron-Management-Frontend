@@ -187,6 +187,11 @@ export default {
         send_sample_date: '',
         treatment_naive: '',
         treatment_received: '',
+        comment1: '',
+        comment2: '',
+        comment3: '',
+        comment4: '',
+        comment5: '',
       },
       viewForm: {
         idx: null,
@@ -218,6 +223,11 @@ export default {
         send_sample_date: '',
         treatment_naive: '',
         treatment_received: '',
+        comment1: '',
+        comment2: '',
+        comment3: '',
+        comment4: '',
+        comment5: '',
       },
       isDefaultValue: {},
       formSections: [
@@ -252,6 +262,12 @@ export default {
             { label: '寄出/取样日期', prop: 'send_sample_date' },
             { label: 'Treatment Naive', prop: 'treatment_naive' },
             { label: '接受过何种治疗', prop: 'treatment_received' },
+            { label: '备注1', prop: 'comment1' },
+            { label: '备注2', prop: 'comment2' },
+            { label: '备注3', prop: 'comment3' },
+            { label: '备注4', prop: 'comment4' },
+            { label: '备注5', prop: 'comment5' },
+
           ]
         }
       ]
