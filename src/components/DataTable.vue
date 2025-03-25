@@ -8,8 +8,8 @@
           <el-button @click="exploreSelected" >Explore</el-button>
         </div>
         <div class="right-buttons">
-          <el-button type="primary" @click="openInjectionFilesDialog" disabled>Injection Files</el-button>
-          <el-button type="primary" @click="openImagingInfoDialog" disabled>Imaging Info</el-button>
+<!--          <el-button type="primary" @click="openInjectionFilesDialog" disabled>Injection Files</el-button>-->
+<!--          <el-button type="primary" @click="openImagingInfoDialog" disabled>Imaging Info</el-button>-->
           <el-button type="primary" @click="openRecordBookDialog">Record Book</el-button>
         </div>
       </div>
