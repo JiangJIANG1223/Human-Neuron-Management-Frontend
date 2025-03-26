@@ -23,6 +23,24 @@
                 </el-select>
               </el-form-item>
             </el-col>
+            <el-col :span="6">
+              <el-form-item label="intracranial location">
+                <el-input
+                    v-model="searchQuery.intracranial_location"
+                    placeholder="please input intracranial location"
+                    clearable
+                ></el-input>
+              </el-form-item>
+            </el-col>
+            <el-col :span="6">
+              <el-form-item label="brain region">
+                <el-input
+                    v-model="searchQuery.english_abbr_nj"
+                    placeholder="please input abbreviation of brain region"
+                    clearable
+                ></el-input>
+              </el-form-item>
+            </el-col>
           </el-row>
           <el-col :span="24" class="button-group">
             <el-button type="primary" @click="search" style="margin-left: 10px;">Search</el-button>
@@ -40,6 +58,7 @@
 import axios from '@/axios';
 
 export default {
+  // eslint-disable-next-line vue/multi-word-component-names
   name: 'Search Samples',
   data() {
     return {
@@ -47,7 +66,8 @@ export default {
       searchQuery: {
         sample_source: [],  // 新增的搜索条件
         patient_ID: [],
-
+        intracranial_location: '',
+        english_abbr_nj: ''
       },
       sampleSourceOptions: ['BJ-TT','NanJ-JZ','NanJ-NK','NanJ-JSP','SH-HS'],  // 来源选项
       patientIdOptions: []
@@ -65,6 +85,11 @@ export default {
     'searchQuery.patient_ID'(newVal) {
       if (newVal.includes('none')) {
         this.searchQuery.patient_ID = [];
+      }
+    },
+    'searchQuery.intracranial_location'(newVal) {
+      if (newVal.includes('none')) {
+        this.searchQuery.intracranial_location = '';
       }
     }
   },

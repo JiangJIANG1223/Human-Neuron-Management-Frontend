@@ -147,7 +147,9 @@ export default {
       current_image_name: '',  // 新增
       searchQuery: {
         sample_source: [],
-        patient_ID: []
+        patient_ID: [],
+        intracranial_location: '',
+        english_abbr_nj: ''
       },
       sampleInfo: [],
       selectedSamples: [],
@@ -422,6 +424,8 @@ export default {
       // 将子组件传来的查询条件同步到父组件自己的 searchQuery 中
       this.searchQuery.sample_source = queryParams.sample_source || [];
       this.searchQuery.patient_ID = queryParams.patient_ID || [];
+      this.searchQuery.intracranial_location = queryParams.intracranial_location || '';
+      this.searchQuery.english_abbr_nj = queryParams.english_abbr_nj || '';
       console.log(queryParams)
       // 这一步会触发 watch.searchQuery 从而调用 fetchSampleInfo()
     },
@@ -431,6 +435,8 @@ export default {
         limit: this.pageSize,
         sample_source: this.searchQuery.sample_source,
         PID: this.searchQuery.patient_ID,
+        intracranial_location: this.searchQuery.intracranial_location,
+        english_abbr_nj: this.searchQuery.english_abbr_nj,
       };
 
       axios.get('/api/sample_information/', {
@@ -518,7 +524,9 @@ export default {
         limit: this.total,
         // 两个字段都是数组。例如 ["BJ-TT", "NanJ-NK"]
         sample_source: this.searchQuery.sample_source,
-        PID: this.searchQuery.patient_ID
+        PID: this.searchQuery.patient_ID,
+        intracranial_location: this.searchQuery.intracranial_location,
+        english_abbr_nj: this.searchQuery.english_abbr_nj
       };
       console.log('Sending params:', params);
       return axios.get('/api/sample_information/', {
