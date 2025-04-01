@@ -175,7 +175,7 @@
         </td>
         <td>
           <el-button type="primary" class="btn" @click="handleViewEdit(row)">View / Edit</el-button>
-          <el-button type="danger" class="btn" @click="handleDelete(row)">Delete</el-button>
+          <el-button type="danger" class="btn" @click="handleDelete(row)" :disabled="row.status !=='injected'">Delete</el-button>
         </td>
       </tr>
       </tbody>
