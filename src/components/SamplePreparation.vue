@@ -141,9 +141,9 @@
         <th>Injected</th>
         <th>Status</th>
         <th>Operator</th>
-        <th>Injection info</th>
         <th>Injection files</th>
         <th>Imaging info</th>
+        <th>Edit</th>
       </tr>
       </thead>
       <tbody>
@@ -156,9 +156,6 @@
         <td>{{ row.injected_num }}</td>
         <td>{{ row.status }}</td>
         <td>{{ row.perfusion_user }}</td>
-        <td>
-          <el-button type="primary" class="btn" @click="handleViewEdit(row)">View / Edit</el-button>
-        </td>
         <td>
           <el-tooltip content="replace the injection file">
             <el-button
@@ -175,6 +172,10 @@
         </td>
         <td>
           <el-button type="primary" class="btn" @click="openImagingDialog(row)">Imaging info</el-button>
+        </td>
+        <td>
+          <el-button type="primary" class="btn" @click="handleViewEdit(row)">View / Edit</el-button>
+          <el-button type="danger" class="btn" @click="handleDelete(row)">Delete</el-button>
         </td>
       </tr>
       </tbody>
@@ -1098,6 +1099,64 @@ function handleViewEdit(row) {
   editForm.value = { ...row };
   editDialogVisible.value = true;
 }
+// 在 handleDelete 函数中添加确认对话框
+function handleDelete(row) {
+  ElMessageBox.confirm(
+      `Are you sure to delete the sample ${row.sampleId}-${row.tissueId}-${row.rollId}-${row.sliceId}? This action cannot be undone.`,
+      'Warning',
+      {
+        confirmButtonText: 'Confirm',
+        cancelButtonText: 'Cancel',
+        type: 'warning',
+      }
+  )
+      .then(() => {
+        deleteSample(row.id);
+      })
+      .catch(() => {
+        ElMessage({
+          type: 'info',
+          message: 'cancel delete',
+        });
+      });
+}
+
+// 添加删除样本的函数
+async function deleteSample(id) {
+  try {
+    const loading = ElLoading.service({
+      lock: true,
+      text: 'deleting...',
+      background: 'rgba(0, 0, 0, 0.7)'
+    });
+
+    // 发送删除请求
+    await axios.delete(`/api/sample_preparation/${id}`);
+
+    // 从本地数据中移除被删除的样本
+    const index = rawData.value.findIndex(item => item.id === id);
+    if (index !== -1) {
+      rawData.value.splice(index, 1);
+    }
+
+    loading.close();
+    ElMessage.success('delete sample successfully');
+  } catch (error) {
+    console.error('failed to delete sample:', error);
+    let errorMessage = 'delete sample failed';
+
+    if (error.response && error.response.data) {
+      if (error.response.data.detail) {
+        errorMessage = error.response.data.detail;
+      } else if (typeof error.response.data === 'string') {
+        errorMessage = error.response.data;
+      }
+    }
+
+    ElMessage.error(errorMessage);
+  }
+}
+
 function handleFileChange(file,filelist) {
   fileList.value = filelist;
   // parseFileName(file);
